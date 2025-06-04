@@ -1,6 +1,6 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { convertMakamToString } from '../app/screens/habits/title';
+import { convertMakamToString } from '../app/screens/habits/TitleComponent';
 import { User } from '../types';
 
 interface UserHeaderProps {
