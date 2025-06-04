@@ -90,6 +90,8 @@ export const getActiveHabits = async (): Promise<Habit[]> => {
         canReward: data.canReward || 0, // schema: canReward
         points: data.points || 0, // schema: points
         type: data.frequency || 'daily', // schema: frequency (daily/weekly)
+        repeat: data.repeat || 1, // schema: repeat
+        weekday: data.weekday || '', // schema: weekday
         isActive: data.isActive !== false, // schema: isActive
         createdAt: data.createdAt?.toDate() || new Date(),
         makam: data.makam || 0 // schema: makam (0-4)
@@ -139,6 +141,59 @@ export const getHabitCompletions = async (userId: string, date: string): Promise
     return completions;
   } catch (error) {
     console.error('Error fetching habit completions:', error);
+    throw error;
+  }
+};
+
+// Get weekly habit completions for current week
+export const getWeeklyHabitCompletions = async (userId: string, selectedDate: string): Promise<HabitCompletion[]> => {
+  try {
+    // Calculate week range (Saturday to Friday)
+    const date = new Date(selectedDate);
+    const day = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    
+    // Get Saturday of current week
+    const start = new Date(date);
+    const daysToSaturday = day === 6 ? 0 : (day + 1);
+    start.setDate(date.getDate() - daysToSaturday);
+    
+    // Get Friday of current week (Saturday + 6 days)
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    
+    const startDate = start.toISOString().split('T')[0];
+    const endDate = end.toISOString().split('T')[0];
+    
+    // Query all logs for this user within the week range
+    const weekLogsQuery = query(
+      collection(db, 'habitLogs'),
+      where('userId', '==', userId), // schema: userId
+      where('date', '>=', startDate), // schema: date
+      where('date', '<=', endDate) // schema: date
+    );
+    
+    const weekLogsSnapshot = await getDocs(weekLogsQuery);
+    
+    // Return all completed logs for the week
+    const completions = weekLogsSnapshot.docs
+      .filter(doc => doc.data().completed === true)
+      .map(doc => {
+        const data = doc.data();
+        
+        return { 
+          id: doc.id, 
+          habitId: data.habitID || data.habitId, // schema: habitID
+          userId: data.userId, // schema: userId
+          date: data.date, // schema: date
+          completed: data.completed, // schema: completed
+          completedAt: data.createdAt?.toDate() || new Date(), // schema: createdAt
+          goldEarned: 0 // Not in schema, will calculate from habit
+        } as HabitCompletion;
+      });
+    
+    return completions;
+  } catch (error) {
+    console.error('Error fetching weekly habit completions:', error);
     throw error;
   }
 };

@@ -21,25 +21,35 @@ import HabitCard from '../../../components/HabitCard';
 import { Components, Layout, Typography } from '../../../css';
 import { Habit, HabitCompletion, User } from '../../../types';
 import { canUserAccessHabit, filterHabitsByUserPermission } from '../../../utils/habitPermissions';
+import {
+  getWeeklyHabitCompletionCount,
+  isWeeklyHabitCompleted,
+  isWeeklyHabitDisabled,
+  shouldShowWeeklyHabit
+} from '../../../utils/weeklyHabits';
 
 interface ContentProps {
   user: User;
   habits: Habit[];
   completions: HabitCompletion[];
+  weeklyCompletions: HabitCompletion[]; // Weekly completions for current week
   selectedDate: string;
   onDateSelect: (date: string) => void;
   onHabitToggle: (habit: Habit) => void;
   isHabitCompleted: (habitId: string) => boolean;
+  isWeeklyHabitCompletedForDate: (habitId: string) => boolean;
 }
 
 export default function Content({ 
   user, 
   habits, 
   completions, 
+  weeklyCompletions, 
   selectedDate, 
   onDateSelect, 
   onHabitToggle, 
-  isHabitCompleted 
+  isHabitCompleted, 
+  isWeeklyHabitCompletedForDate 
 }: ContentProps) {
   
   const renderDailyHabits = () => {
@@ -66,6 +76,55 @@ export default function Content({
     );
   };
 
+  const renderWeeklyHabits = () => {
+    const weeklyHabits = habits.filter(habit => habit.type === 'weekly');
+    const filteredHabits = filterHabitsByUserPermission(weeklyHabits, user);
+    
+    // Only show weekly habits that should be visible on selected date
+    const visibleHabits = filteredHabits.filter(habit => 
+      shouldShowWeeklyHabit(habit, selectedDate)
+    );
+
+    if (visibleHabits.length === 0) return null;
+
+    return (
+      <View style={{ padding: 16 }}>
+        <Text style={Typography.subtitleMedium}>Haftalık Alışkanlıklar</Text>
+        
+        {visibleHabits.map((habit) => {
+          // Weekly habits için günlük completion durumunu kontrol et
+          const isCompleted = habit.weekday === 'any' 
+            ? isWeeklyHabitCompletedForDate(habit.id)
+            : isWeeklyHabitCompleted(habit, selectedDate, weeklyCompletions);
+            
+          const isDisabled = isWeeklyHabitDisabled(habit, selectedDate, weeklyCompletions);
+          
+          // For "any" day weekly habits, show completion count
+          const completionCount = habit.weekday === 'any' 
+            ? getWeeklyHabitCompletionCount(habit.id, selectedDate, weeklyCompletions)
+            : 0;
+          
+          return (
+            <View key={habit.id}>
+              <HabitCard
+                habit={habit}
+                isCompleted={isCompleted}
+                onToggle={() => onHabitToggle(habit)}
+                disabled={isDisabled}
+              />
+              {/* Show weekly progress for "any" day habits */}
+              {habit.weekday === 'any' && (
+                <Text style={[Typography.bodySmall, { paddingLeft: 16, paddingBottom: 8, color: '#666' }]}>
+                  Bu hafta: {completionCount}/{habit.repeat || 1} tamamlandı
+                </Text>
+              )}
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
   return (
     <View style={Layout.container}>
       {/* Date Selector */}
@@ -86,6 +145,7 @@ export default function Content({
         ) : (
           <>
             {renderDailyHabits()}
+            {renderWeeklyHabits()}
             
             {/* Show message if no accessible daily habits */}
             {(() => {

@@ -24,7 +24,7 @@ import { ActivityIndicator, Alert, RefreshControl, SafeAreaView, ScrollView, Tex
 import RewardBanner from '../../../components/RewardBanner';
 import UserHeader from '../../../components/UserHeader';
 import { Colors, Components, Layout, Typography } from '../../../css';
-import { completeHabit, getActiveHabits, getHabitCompletions, getUser, uncompleteHabit } from '../../../services/firebase';
+import { completeHabit, getActiveHabits, getHabitCompletions, getUser, getWeeklyHabitCompletions, uncompleteHabit } from '../../../services/firebase';
 import { Habit, HabitCompletion, User } from '../../../types';
 import Content from './content';
 
@@ -32,6 +32,7 @@ export default function HabitsScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [completions, setCompletions] = useState<HabitCompletion[]>([]);
+  const [weeklyCompletions, setWeeklyCompletions] = useState<HabitCompletion[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const today = new Date();
     return today.toISOString().split('T')[0]; // YYYY-MM-DD format
@@ -64,15 +65,17 @@ export default function HabitsScreen() {
       }
 
       // Load habits and completions from Firebase (read-only)
-      const [habitsData, completionsData] = await Promise.all([
+      const [habitsData, completionsData, weeklyCompletionsData] = await Promise.all([
         getActiveHabits(), // Just read existing habits
-        getHabitCompletions(profileId, selectedDate)
+        getHabitCompletions(profileId, selectedDate),
+        getWeeklyHabitCompletions(profileId, selectedDate)
       ]);
 
       // Set state
       setUser(userData);
       setHabits(habitsData);
       setCompletions(completionsData);
+      setWeeklyCompletions(weeklyCompletionsData);
       
     } catch (error) {
       console.error('Error loading data:', error);
@@ -98,14 +101,20 @@ export default function HabitsScreen() {
     const loadCompletions = async () => {
       if (user && user.id) {
         try {
-          const completionsData = await getHabitCompletions(user.id, selectedDate);
+          const [completionsData, weeklyCompletionsData] = await Promise.all([
+            getHabitCompletions(user.id, selectedDate),
+            getWeeklyHabitCompletions(user.id, selectedDate)
+          ]);
           setCompletions(completionsData);
+          setWeeklyCompletions(weeklyCompletionsData);
         } catch (error) {
           console.error('Error loading completions:', error);
           setCompletions([]); // Clear completions on error
+          setWeeklyCompletions([]);
         }
       } else {
         setCompletions([]);
+        setWeeklyCompletions([]);
       }
     };
 
@@ -130,15 +139,35 @@ export default function HabitsScreen() {
     );
   };
 
+  // Weekly habits için özel completion check
+  const isWeeklyHabitCompletedForDate = (habitId: string) => {
+    return weeklyCompletions.some(completion => 
+      completion.habitId === habitId && 
+      completion.completed && 
+      completion.date === selectedDate
+    );
+  };
+
   const handleHabitToggle = async (habit: Habit) => {
     if (!user) return;
 
-    const isCompleted = isHabitCompleted(habit.id);
+    const isCompleted = habit.type === 'weekly' 
+      ? isWeeklyHabitCompletedForDate(habit.id)
+      : isHabitCompleted(habit.id);
 
     // 🚀 OPTIMISTIC UPDATE - Update UI immediately for instant feedback
     if (isCompleted) {
       // Immediately update local state (uncomplete)
-      setCompletions(prev => prev.filter(c => c.habitId !== habit.id));
+      if (habit.type === 'weekly') {
+        // Weekly habits için weekly completions'ı güncelle
+        setWeeklyCompletions(prev => prev.filter(c => 
+          !(c.habitId === habit.id && c.date === selectedDate)
+        ));
+      } else {
+        // Daily habits için normal completions'ı güncelle
+        setCompletions(prev => prev.filter(c => c.habitId !== habit.id));
+      }
+      
       setUser(prev => prev ? { 
         ...prev, 
         gold: Math.max(0, (prev.gold || 0) - habit.goldReward),
@@ -155,7 +184,15 @@ export default function HabitsScreen() {
         completedAt: new Date(),
         goldEarned: habit.goldReward
       };
-      setCompletions(prev => [...prev, newCompletion]);
+      
+      if (habit.type === 'weekly') {
+        // Weekly habits için weekly completions'ı güncelle
+        setWeeklyCompletions(prev => [...prev, newCompletion]);
+      } else {
+        // Daily habits için normal completions'ı güncelle
+        setCompletions(prev => [...prev, newCompletion]);
+      }
+      
       setUser(prev => prev ? { 
         ...prev, 
         gold: (prev.gold || 0) + habit.goldReward,
@@ -193,7 +230,13 @@ export default function HabitsScreen() {
           completedAt: new Date(),
           goldEarned: habit.goldReward
         };
-        setCompletions(prev => [...prev, rollbackCompletion]);
+        
+        if (habit.type === 'weekly') {
+          setWeeklyCompletions(prev => [...prev, rollbackCompletion]);
+        } else {
+          setCompletions(prev => [...prev, rollbackCompletion]);
+        }
+        
         setUser(prev => prev ? { 
           ...prev, 
           gold: (prev.gold || 0) + habit.goldReward,
@@ -201,7 +244,14 @@ export default function HabitsScreen() {
         } : null);
       } else {
         // Rollback: remove the completion
-        setCompletions(prev => prev.filter(c => c.habitId !== habit.id));
+        if (habit.type === 'weekly') {
+          setWeeklyCompletions(prev => prev.filter(c => 
+            !(c.habitId === habit.id && c.date === selectedDate)
+          ));
+        } else {
+          setCompletions(prev => prev.filter(c => c.habitId !== habit.id));
+        }
+        
         setUser(prev => prev ? { 
           ...prev, 
           gold: Math.max(0, (prev.gold || 0) - habit.goldReward),
@@ -249,10 +299,12 @@ export default function HabitsScreen() {
           user={user}
           habits={habits}
           completions={completions}
+          weeklyCompletions={weeklyCompletions}
           selectedDate={selectedDate}
           onDateSelect={setSelectedDate}
           onHabitToggle={handleHabitToggle}
           isHabitCompleted={isHabitCompleted}
+          isWeeklyHabitCompletedForDate={isWeeklyHabitCompletedForDate}
         />
       </ScrollView>
       
