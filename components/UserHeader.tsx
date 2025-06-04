@@ -18,8 +18,8 @@
 
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { convertMakamToString } from '../app/screens/habits/TitleComponent';
 import { User } from '../types';
+import { convertMakamToString } from '../utils/habitPermissions';
 
 interface UserHeaderProps {
   user: User;

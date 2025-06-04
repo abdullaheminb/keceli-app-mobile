@@ -31,21 +31,23 @@ export const getUser = async (userId: string): Promise<User | null> => {
       });
       console.log('================================');
       
+      // Map Firebase fields to app fields according to new schema
       const user = { 
         id: userDoc.id, 
-        name: userData.username || userData.name || 'Kullanıcı',
-        profileImage: userData.profileImage,
-        lives: userData.can || userData.lives || 5,
-        gold: userData.altin || userData.gold || 0,
-        makam: userData.makam || 0, // Firebase'den number olarak direkt kullan
+        name: userData.username || userData.name || 'Kullanıcı', // schema: username
+        profileImage: userData.profilePic || userData.profileImage, // schema: profilePic
+        lives: userData.can || userData.lives || 5, // schema: can
+        gold: userData.altin || userData.gold || 0, // schema: altin
+        makam: userData.makam || 0, // schema: makam (number 0-4)
       } as User;
       
       console.log('=== MAPPED USER OBJECT ===');
       console.log('Final mapped user:', user);
-      console.log('Field mappings:');
-      console.log('  username/name:', userData.username, '||', userData.name, '->', user.name);
-      console.log('  can/lives:', userData.can, '||', userData.lives, '->', user.lives);
-      console.log('  altin/gold:', userData.altin, '||', userData.gold, '->', user.gold);
+      console.log('Field mappings (NEW SCHEMA):');
+      console.log('  username:', userData.username, '->', user.name);
+      console.log('  profilePic:', userData.profilePic, '->', user.profileImage);
+      console.log('  can:', userData.can, '->', user.lives);
+      console.log('  altin:', userData.altin, '->', user.gold);
       console.log('  makam (NUMBER):', userData.makam, `(${typeof userData.makam})`, '->', user.makam);
       console.log('==========================');
       return user;
@@ -63,26 +65,30 @@ export const createUser = async (userId: string, userData: Omit<User, 'id'>): Pr
   try {
     console.log('Creating user in Firebase:', userId, userData);
     const userRef = doc(db, 'users', userId);
+    
+    // Use new schema field names
     const newUserData = {
-      name: userData.name || 'Nur Yolcusu',
-      lives: userData.lives || 5,
-      gold: userData.gold || 0,
-      makam: userData.makam || 0,
-      profileImage: userData.profileImage || null,
+      username: userData.name || 'Nur Yolcusu', // schema: username
+      can: userData.lives || 100, // schema: can (lives)
+      altin: userData.gold || 0, // schema: altin (gold)
+      makam: userData.makam || 0, // schema: makam (0-4)
+      profilePic: userData.profileImage || null, // schema: profilePic
+      ihlas: 0, // schema: ihlas (new field)
+      role: 'user', // schema: role (new field)
       createdAt: serverTimestamp(),
       lastUpdated: serverTimestamp()
     };
     
     await setDoc(userRef, newUserData);
-    console.log('User created successfully');
+    console.log('User created successfully with new schema');
     
     return { 
       id: userId, 
-      name: newUserData.name,
-      lives: newUserData.lives,
-      gold: newUserData.gold,
+      name: newUserData.username,
+      lives: newUserData.can,
+      gold: newUserData.altin,
       makam: newUserData.makam,
-      profileImage: newUserData.profileImage
+      profileImage: newUserData.profilePic
     } as User;
   } catch (error) {
     console.error('Error creating user:', error);
@@ -101,8 +107,9 @@ export const updateUserGold = async (userId: string, goldAmount: number): Promis
       return;
     }
     
+    // Use new schema field name: altin
     await updateDoc(userRef, {
-      gold: increment(goldAmount),
+      altin: increment(goldAmount), // schema: altin (not gold)
       lastUpdated: serverTimestamp()
     });
   } catch (error) {
@@ -114,16 +121,12 @@ export const updateUserGold = async (userId: string, goldAmount: number): Promis
 // Habit operations
 export const getActiveHabits = async (): Promise<Habit[]> => {
   try {
-    console.log('=== HABITS FETCH START ===');
-    console.log('Fetching ALL habits from Firebase (no queries)...');
+    console.log('=== HABITS FETCH START (NEW SCHEMA) ===');
+    console.log('Fetching habits from Firebase...');
     
-    // En basit yaklaşım - hiç query yok, sadece collection read
     const habitsRef = collection(db, 'habits');
-    console.log('Getting collection reference...');
-    
     const snapshot = await getDocs(habitsRef);
     console.log('Got snapshot, size:', snapshot.size);
-    console.log('Snapshot empty?', snapshot.empty);
     
     if (snapshot.empty) {
       console.log('No habits found in Firebase');
@@ -135,27 +138,28 @@ export const getActiveHabits = async (): Promise<Habit[]> => {
     
     snapshot.forEach((doc) => {
       const data = doc.data();
-      console.log('--- Processing habit doc ---');
+      console.log('--- Processing habit doc (NEW SCHEMA) ---');
       console.log('Doc ID:', doc.id);
       console.log('Raw data:', data);
-      console.log('habitname field:', data.habitname);
-      console.log('name field:', data.name);
-      console.log('isActive field:', data.isActive);
+      console.log('habitname field:', data.habitname); // schema: habitname
       console.log('makam field:', data.makam, `(type: ${typeof data.makam})`);
+      console.log('isActive field:', data.isActive);
+      console.log('reward field:', data.reward); // schema: reward (not goldReward)
+      console.log('frequency field:', data.frequency); // schema: frequency
       
       const habit: Habit = {
         id: doc.id,
-        name: data.habitname || data.name || 'Unnamed Habit',
+        name: data.habitname || 'Unnamed Habit', // schema: habitname
         description: data.description || '',
         icon: data.icon || '📝',
-        goldReward: data.goldReward || 0,
-        type: data.type || 'daily',
-        isActive: data.isActive !== false, // Default to true
+        goldReward: data.reward || data.points || 0, // schema: reward, points
+        type: data.frequency || 'daily', // schema: frequency (daily/weekly)
+        isActive: data.isActive !== false, // schema: isActive
         createdAt: data.createdAt?.toDate() || new Date(),
-        makam: data.makam || 0 // Firebase'den number olarak direkt kullan
+        makam: data.makam || 0 // schema: makam (0-4)
       };
       
-      console.log('Mapped habit:', habit);
+      console.log('Mapped habit (NEW SCHEMA):', habit);
       allHabits.push(habit);
     });
     
@@ -171,10 +175,23 @@ export const getActiveHabits = async (): Promise<Habit[]> => {
 
 export const createHabit = async (habitData: Omit<Habit, 'id' | 'createdAt'>): Promise<string> => {
   try {
-    const docRef = await addDoc(collection(db, 'habits'), {
-      ...habitData,
+    // Map to new schema field names
+    const newHabitData = {
+      habitname: habitData.name, // schema: habitname
+      makam: habitData.makam || 0, // schema: makam
+      approval: 'auto', // schema: approval
+      canReward: 0, // schema: canReward
+      frequency: habitData.type || 'daily', // schema: frequency
+      isActive: habitData.isActive !== false, // schema: isActive
+      points: habitData.goldReward || 0, // schema: points
+      repeat: 1, // schema: repeat
+      reward: habitData.goldReward || 0, // schema: reward
+      weekday: '', // schema: weekday
       createdAt: serverTimestamp()
-    });
+    };
+    
+    const docRef = await addDoc(collection(db, 'habits'), newHabitData);
+    console.log('Habit created with new schema:', docRef.id);
     return docRef.id;
   } catch (error) {
     console.error('Error creating habit:', error);
@@ -289,20 +306,41 @@ export const forceCreateHabits = async (): Promise<void> => {
   }
 };
 
-// Habit completion operations
+// Habit completion operations - Updated for new habitLogs schema
 export const getHabitCompletions = async (userId: string, date: string): Promise<HabitCompletion[]> => {
   try {
+    console.log('=== FETCHING HABIT LOGS (NEW SCHEMA) ===');
+    console.log('User ID:', userId, 'Date:', date);
+    
+    // Query habitLogs collection with new schema fields
     const completionsQuery = query(
-      collection(db, 'habitCompletions'),
-      where('userId', '==', userId),
-      where('date', '==', date)
+      collection(db, 'habitLogs'),
+      where('userId', '==', userId), // schema: userId
+      where('date', '==', date), // schema: date
+      where('completed', '==', true) // schema: completed
     );
+    
     const completionsSnapshot = await getDocs(completionsQuery);
-    return completionsSnapshot.docs.map(doc => ({ 
-      id: doc.id, 
-      ...doc.data(),
-      completedAt: doc.data().completedAt?.toDate() || new Date()
-    } as HabitCompletion));
+    console.log('Found', completionsSnapshot.size, 'habit logs');
+    
+    const completions = completionsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      console.log('Processing habit log:', doc.id, data);
+      
+      return { 
+        id: doc.id, 
+        habitId: data.habitID || data.habitId, // schema: habitID
+        userId: data.userId, // schema: userId
+        date: data.date, // schema: date
+        completed: data.completed, // schema: completed
+        completedAt: data.createdAt?.toDate() || new Date(), // schema: createdAt
+        goldEarned: 0 // Not in schema, will calculate from habit
+      } as HabitCompletion;
+    });
+    
+    console.log('Mapped completions:', completions);
+    console.log('=== HABIT LOGS FETCH END ===');
+    return completions;
   } catch (error) {
     console.error('Error fetching habit completions:', error);
     throw error;
@@ -311,22 +349,32 @@ export const getHabitCompletions = async (userId: string, date: string): Promise
 
 export const completeHabit = async (userId: string, habitId: string, date: string, goldReward: number): Promise<void> => {
   try {
-    // Add habit completion
-    await addDoc(collection(db, 'habitCompletions'), {
-      habitId,
-      userId,
-      date,
-      completed: true,
-      completedAt: serverTimestamp(),
-      goldEarned: goldReward
-    });
+    console.log('=== COMPLETING HABIT (NEW SCHEMA) ===');
+    console.log('User:', userId, 'Habit:', habitId, 'Date:', date);
+    
+    // Add habit log with new schema fields
+    const habitLogData = {
+      habitID: habitId, // schema: habitID (not habitId)
+      completed: true, // schema: completed
+      createdAt: serverTimestamp(), // schema: createdAt
+      date: date, // schema: date
+      state: 'approved', // schema: state
+      timestamp: new Date().toISOString(), // schema: timestamp
+      userId: userId // schema: userId
+    };
+    
+    const docRef = await addDoc(collection(db, 'habitLogs'), habitLogData);
+    console.log('Habit log created:', docRef.id);
 
-    // Try to update user's gold (will log warning if user doesn't exist)
+    // Try to update user's gold (altin field)
     try {
       await updateUserGold(userId, goldReward);
+      console.log('User gold updated:', goldReward);
     } catch (goldError) {
       console.warn('Could not update user gold, user may not exist:', goldError);
     }
+    
+    console.log('=== HABIT COMPLETION END ===');
   } catch (error) {
     console.error('Error completing habit:', error);
     throw error;
@@ -335,29 +383,44 @@ export const completeHabit = async (userId: string, habitId: string, date: strin
 
 export const uncompleteHabit = async (userId: string, habitId: string, date: string, goldReward: number): Promise<void> => {
   try {
-    // Find and update the completion
+    console.log('=== UNCOMPLETING HABIT (NEW SCHEMA) ===');
+    console.log('User:', userId, 'Habit:', habitId, 'Date:', date);
+    
+    // Find the habit log with new schema fields
     const completionsQuery = query(
-      collection(db, 'habitCompletions'),
-      where('userId', '==', userId),
-      where('habitId', '==', habitId),
-      where('date', '==', date)
+      collection(db, 'habitLogs'),
+      where('userId', '==', userId), // schema: userId
+      where('habitID', '==', habitId), // schema: habitID
+      where('date', '==', date), // schema: date
+      where('completed', '==', true) // schema: completed
     );
+    
     const completionsSnapshot = await getDocs(completionsQuery);
+    console.log('Found', completionsSnapshot.size, 'habit logs to uncomplete');
     
     if (!completionsSnapshot.empty) {
       const completionDoc = completionsSnapshot.docs[0];
-      await setDoc(doc(db, 'habitCompletions', completionDoc.id), {
-        ...completionDoc.data(),
-        completed: false
+      console.log('Updating habit log:', completionDoc.id);
+      
+      // Update to uncompleted state
+      await updateDoc(completionDoc.ref, {
+        completed: false, // schema: completed
+        state: 'cancelled', // schema: state
+        timestamp: new Date().toISOString() // schema: timestamp
       });
 
-      // Try to remove gold from user (will log warning if user doesn't exist)
+      // Try to remove gold from user (altin field)
       try {
         await updateUserGold(userId, -goldReward);
+        console.log('User gold reduced:', goldReward);
       } catch (goldError) {
         console.warn('Could not update user gold, user may not exist:', goldError);
       }
+    } else {
+      console.log('No habit log found to uncomplete');
     }
+    
+    console.log('=== HABIT UNCOMPLETION END ===');
   } catch (error) {
     console.error('Error uncompleting habit:', error);
     throw error;

@@ -25,7 +25,6 @@ import UserHeader from '../../../components/UserHeader';
 import { getActiveHabits, getHabitCompletions, getUser } from '../../../services/firebase';
 import { Habit, HabitCompletion, User } from '../../../types';
 import Content from './content';
-import Title from './TitleComponent';
 
 export default function HabitsScreen() {
   const [user, setUser] = useState<User | null>(null);
@@ -285,9 +284,6 @@ export default function HabitsScreen() {
       >
         {/* User Header */}
         <UserHeader user={user || { id: '', name: 'Loading...', lives: 0, gold: 0, makam: '' }} />
-        
-        {/* Title Section */}
-        <Title user={user} selectedDate={selectedDate} />
         
         {/* Debug Section */}
         <View style={styles.debugSection}>

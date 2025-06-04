@@ -1,20 +1,18 @@
 /**
  * Date Selector Component
  * 
- * Tarih seçimi için horizontal scroll yapılabilen
- * takvim komponenti. Kullanıcı farklı günleri seçebilir.
+ * Kullanıcının farklı tarihleri seçmesini sağlayan yatay kaydırmalı takvim komponenti.
+ * Geçmiş ve gelecek günleri gösterir, seçili tarihi vurgular.
  * 
  * @features
- * - Horizontal scrollable tarih listesi
- * - Bugün vurgulama
- * - Seçili tarih highlighting
- * - Türkçe tarih formatları
- * 
- * @props
- * - selectedDate: Seçili tarih (YYYY-MM-DD)
- * - onDateSelect: Tarih seçim callback
+ * - 30 gün geçmiş + bugün + 30 gün gelecek gösterimi
+ * - Seçili tarihi vurgulama
+ * - Türkçe ay isimleri ve gün kısaltmaları
+ * - Yatay scroll ile tarih gezinme
+ * - Bugünü otomatik merkeze alma
  * 
  * @purpose Date selection for habit tracking
+ * @used_in app/screens/habits/content.tsx - tarih seçimi için
  */
 
 import React from 'react';

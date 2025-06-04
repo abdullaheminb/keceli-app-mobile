@@ -1,3 +1,19 @@
+/**
+ * Themed Text Component
+ * 
+ * Tema renklerini destekleyen text komponenti.
+ * Light/dark mode'a göre otomatik renk değişimi yapar.
+ * 
+ * @features
+ * - Otomatik tema renk desteği
+ * - Farklı text tipleri (title, subtitle, link vb.)
+ * - Custom light/dark renkler
+ * - Standart Text props desteği
+ * 
+ * @purpose Themed text display with automatic color switching
+ * @used_in Collapsible, HelloWave, +not-found sayfalarında
+ */
+
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
 import { useThemeColor } from '@/hooks/useThemeColor';

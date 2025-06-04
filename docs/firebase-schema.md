@@ -11,8 +11,8 @@
   "altin": "number", // Gold amount
   "can": "number",   // Lives amount
   "profilePic": "string", // Optional profile image URL
-  "createdAt": "timestamp",
-  "lastLogin": "timestamp"
+  "ihlas": "number",
+  "role": "string"
 }
 ```
 
@@ -22,32 +22,27 @@
 {
   "habitname": "string", // Habit name
   "makam": "number",     // Required makam level (0-4)
-  "description": "string", // Optional description
-  "category": "string",    // Optional category
-  "createdAt": "timestamp"
+  "approval": "string", //Shows if habit auto approved or manually
+  "canReward": "number", // Shows how much health point habit gives
+  "frequency": "string", // Shows if habit weekly or daily
+  "isActive": "boolean", // Shows if habit live
+  "points": "number", // Shows how much points habit give.
+  "repeat": "number", // Shows how many times it can be completed in given frequency
+  "reward": "number", // Shows how much gold habit rewards
+  "weekday": "string" // Shows whichday this habits shown (relevant only for weekly frequencies)
 }
 ```
-
-### 3. `userHabitCompletions` Collection ⭐ **NEW**
+### 3. `habitLogs` Collection
 ```javascript
-// Document ID: {userId}_{date} (örnek: "user123_2025-01-15")
+// Document ID: {habitId}
 {
-  "userId": "string",      // User ID
-  "date": "string",        // YYYY-MM-DD format
-  "completions": {
-    "habitId1": {
-      "count": "number",     // Kaç kere tamamlandı (1,2,3...)
-      "timestamp": "string"  // Son completion zamanı (ISO format)
-    },
-    "habitId2": {
-      "count": "number",
-      "timestamp": "string"
-    }
-  },
-  "metadata": {
-    "totalHabits": "number",    // O gün toplam tamamlanan habit sayısı
-    "lastUpdated": "timestamp"  // Son güncelleme zamanı
-  }
+  "habitID": "string", // Related habits document ID
+  "completed": "boolean",     // Shows if habit completed
+  "createdAt": "timestamp", // Shows when habit is completed
+  "date": "string", // Shows the day of completed habit
+  "state": "string", // Shows if task is approved or not
+  "timestamp": "string", // Timestamp
+  "userId": "string" // Related users document ID
 }
 ```
 
@@ -55,115 +50,182 @@
 
 ### User Data Okuma:
 ```javascript
-// Single user
+// Single user (NEW SCHEMA)
 const userDoc = await db.collection('users').doc(userId).get();
 const userData = userDoc.data();
+
+// Map Firebase fields to app fields
+const user = {
+  id: userDoc.id,
+  name: userData.username, // schema: username
+  profileImage: userData.profilePic, // schema: profilePic
+  lives: userData.can, // schema: can
+  gold: userData.altin, // schema: altin
+  makam: userData.makam // schema: makam (0-4)
+};
 
 // All users (admin)
 const usersSnapshot = await db.collection('users').get();
 const allUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 ```
 
-### Habits Okuma:
+### Habits Okuma (NEW SCHEMA):
 ```javascript
-// All habits
+// All habits with new field names
 const habitsSnapshot = await db.collection('habits').get();
-const habits = habitsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+const habits = habitsSnapshot.docs.map(doc => {
+  const data = doc.data();
+  return {
+    id: doc.id,
+    name: data.habitname, // schema: habitname
+    goldReward: data.reward, // schema: reward
+    type: data.frequency, // schema: frequency (daily/weekly)
+    isActive: data.isActive, // schema: isActive
+    makam: data.makam, // schema: makam (0-4)
+    canReward: data.canReward, // schema: canReward
+    points: data.points, // schema: points
+    repeat: data.repeat, // schema: repeat
+    weekday: data.weekday, // schema: weekday
+    approval: data.approval // schema: approval
+  };
+});
 
 // Makam seviyesine göre filter (client-side - güvenlik için)
 const userAccessibleHabits = habits.filter(habit => user.makam >= habit.makam);
 ```
 
-### Habit Completions Okuma:
+### Habit Logs Okuma (NEW SCHEMA):
 ```javascript
 // Belirli kullanıcının belirli gün completion'ları
 const date = '2025-01-15';
-const docId = `${userId}_${date}`;
-const completionDoc = await db.collection('userHabitCompletions').doc(docId).get();
+const completionsQuery = query(
+  collection(db, 'habitLogs'),
+  where('userId', '==', userId), // schema: userId
+  where('date', '==', date), // schema: date
+  where('completed', '==', true) // schema: completed
+);
 
-if (completionDoc.exists) {
-  const completions = completionDoc.data().completions;
-  console.log('Today completions:', completions);
-} else {
-  console.log('No completions for this date');
-}
+const completionsSnapshot = await getDocs(completionsQuery);
+const completions = completionsSnapshot.docs.map(doc => {
+  const data = doc.data();
+  return {
+    id: doc.id,
+    habitId: data.habitID, // schema: habitID
+    userId: data.userId, // schema: userId
+    date: data.date, // schema: date
+    completed: data.completed, // schema: completed
+    state: data.state, // schema: state ('approved', 'pending', 'cancelled')
+    createdAt: data.createdAt.toDate(), // schema: createdAt
+    timestamp: data.timestamp // schema: timestamp
+  };
+});
 
-// Kullanıcının belirli tarih aralığındaki tüm completion'ları
+// Kullanıcının belirli tarih aralığındaki tüm logs
 const startDate = '2025-01-01';
 const endDate = '2025-01-31';
-const completionsSnapshot = await db.collection('userHabitCompletions')
-  .where('userId', '==', userId)
-  .where('date', '>=', startDate)
-  .where('date', '<=', endDate)
-  .orderBy('date', 'desc')
-  .get();
+const logsQuery = query(
+  collection(db, 'habitLogs'),
+  where('userId', '==', userId),
+  where('date', '>=', startDate),
+  where('date', '<=', endDate),
+  orderBy('date', 'desc')
+);
 ```
 
 ## ✍️ **Data Writing Examples**
 
-### Habit Completion Kaydetme:
+### User Creation (NEW SCHEMA):
 ```javascript
-// Habit tamamlandığında
-const markHabitComplete = async (userId, habitId, date) => {
-  const docId = `${userId}_${date}`;
-  const docRef = db.collection('userHabitCompletions').doc(docId);
+const createUser = async (userId, userData) => {
+  const userRef = doc(db, 'users', userId);
   
-  const doc = await docRef.get();
-  
-  if (doc.exists) {
-    // Existing document - update completion
-    const data = doc.data();
-    const currentCount = data.completions[habitId]?.count || 0;
-    
-    await docRef.update({
-      [`completions.${habitId}.count`]: currentCount + 1,
-      [`completions.${habitId}.timestamp`]: new Date().toISOString(),
-      'metadata.lastUpdated': new Date()
-    });
-  } else {
-    // New document - create
-    await docRef.set({
-      userId: userId,
-      date: date,
-      completions: {
-        [habitId]: {
-          count: 1,
-          timestamp: new Date().toISOString()
-        }
-      },
-      metadata: {
-        totalHabits: 1,
-        lastUpdated: new Date()
-      }
-    });
-  }
+  await setDoc(userRef, {
+    username: userData.name, // schema: username
+    makam: 0, // schema: makam (0-4)
+    altin: 0, // schema: altin (gold)
+    can: 100, // schema: can (lives)
+    profilePic: null, // schema: profilePic
+    ihlas: 0, // schema: ihlas
+    role: 'user', // schema: role
+    createdAt: serverTimestamp()
+  });
 };
 ```
 
-### Habit Completion Silme/Azaltma:
+### Habit Creation (NEW SCHEMA):
 ```javascript
-const decreaseHabitCompletion = async (userId, habitId, date) => {
-  const docId = `${userId}_${date}`;
-  const docRef = db.collection('userHabitCompletions').doc(docId);
+const createHabit = async (habitData) => {
+  const habitRef = await addDoc(collection(db, 'habits'), {
+    habitname: habitData.name, // schema: habitname
+    makam: habitData.makam || 0, // schema: makam
+    approval: 'auto', // schema: approval
+    canReward: habitData.canReward || 0, // schema: canReward
+    frequency: habitData.type || 'daily', // schema: frequency
+    isActive: true, // schema: isActive
+    points: habitData.goldReward || 0, // schema: points
+    repeat: 1, // schema: repeat
+    reward: habitData.goldReward || 0, // schema: reward
+    weekday: '', // schema: weekday
+    createdAt: serverTimestamp()
+  });
   
-  const doc = await docRef.get();
-  if (doc.exists) {
-    const data = doc.data();
-    const currentCount = data.completions[habitId]?.count || 0;
+  return habitRef.id;
+};
+```
+
+### Habit Log Creation (NEW SCHEMA):
+```javascript
+const completeHabit = async (userId, habitId, date) => {
+  // Create habit log
+  const logRef = await addDoc(collection(db, 'habitLogs'), {
+    habitID: habitId, // schema: habitID
+    completed: true, // schema: completed
+    createdAt: serverTimestamp(), // schema: createdAt
+    date: date, // schema: date
+    state: 'approved', // schema: state
+    timestamp: new Date().toISOString(), // schema: timestamp
+    userId: userId // schema: userId
+  });
+  
+  // Update user's gold (altin field)
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, {
+    altin: increment(goldReward) // schema: altin
+  });
+  
+  return logRef.id;
+};
+```
+
+### Habit Log Update (NEW SCHEMA):
+```javascript
+const uncompleteHabit = async (userId, habitId, date) => {
+  // Find the habit log
+  const logsQuery = query(
+    collection(db, 'habitLogs'),
+    where('userId', '==', userId),
+    where('habitID', '==', habitId),
+    where('date', '==', date),
+    where('completed', '==', true)
+  );
+  
+  const snapshot = await getDocs(logsQuery);
+  
+  if (!snapshot.empty) {
+    const logDoc = snapshot.docs[0];
     
-    if (currentCount > 1) {
-      // Decrease count
-      await docRef.update({
-        [`completions.${habitId}.count`]: currentCount - 1,
-        'metadata.lastUpdated': new Date()
-      });
-    } else {
-      // Remove habit completion entirely
-      await docRef.update({
-        [`completions.${habitId}`]: firebase.firestore.FieldValue.delete(),
-        'metadata.lastUpdated': new Date()
-      });
-    }
+    // Update the log
+    await updateDoc(logDoc.ref, {
+      completed: false, // schema: completed
+      state: 'cancelled', // schema: state
+      timestamp: new Date().toISOString() // schema: timestamp
+    });
+    
+    // Reduce user's gold
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      altin: increment(-goldReward) // schema: altin
+    });
   }
 };
 ```
@@ -186,12 +248,15 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.token.admin == true;
     }
     
-    // User habit completions
-    match /userHabitCompletions/{completionId} {
+    // Habit logs collection (NEW SCHEMA)
+    match /habitLogs/{logId} {
       allow read, write: if request.auth != null && 
         resource.data.userId == request.auth.uid;
       allow read: if request.auth != null && 
         request.auth.token.admin == true;
+      // Only allow creation if user owns the log
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
     }
   }
 }
@@ -199,13 +264,42 @@ service cloud.firestore {
 
 ## 📈 **Firestore Indexes**
 
-### Composite Indexes:
-1. **userHabitCompletions Collection:**
-   - Fields: `userId` (Ascending), `date` (Descending)
-   - Purpose: User'ın completion history'sini tarih sırasına göre çekmek
+### Composite Indexes Required:
+
+1. **habitLogs Collection:**
+   - Fields: `userId` (Ascending), `date` (Descending), `completed` (Ascending)
+   - Purpose: User'ın belirli tarih completion'larını çekmek
+   
+   - Fields: `userId` (Ascending), `habitID` (Ascending), `date` (Ascending), `completed` (Ascending)
+   - Purpose: Belirli habit'in completion durumunu kontrol etmek
+   
+   - Fields: `userId` (Ascending), `date` (Ascending), `state` (Ascending)
+   - Purpose: User'ın onay bekleyen habit'lerini çekmek
+
+2. **habits Collection:**
+   - Fields: `isActive` (Ascending), `makam` (Ascending)
+   - Purpose: Aktif habit'leri makam seviyesine göre filtrelemek
+   
+   - Fields: `frequency` (Ascending), `isActive` (Ascending)
+   - Purpose: Günlük/haftalık habit'leri filtrelemek
 
 ### Single Field Indexes (otomatik):
-- `userId`, `date`, `makam` fields automatically indexed
+- `userId`, `date`, `makam`, `isActive`, `habitID`, `completed`, `state` fields automatically indexed
+
+### Index Commands for Firebase CLI:
+```bash
+# habitLogs collection indexes
+firebase firestore:indexes:add --collection-group=habitLogs --query-scope=COLLECTION --field=userId,ASCENDING --field=date,DESCENDING --field=completed,ASCENDING
+
+firebase firestore:indexes:add --collection-group=habitLogs --query-scope=COLLECTION --field=userId,ASCENDING --field=habitID,ASCENDING --field=date,ASCENDING --field=completed,ASCENDING
+
+firebase firestore:indexes:add --collection-group=habitLogs --query-scope=COLLECTION --field=userId,ASCENDING --field=date,ASCENDING --field=state,ASCENDING
+
+# habits collection indexes  
+firebase firestore:indexes:add --collection-group=habits --query-scope=COLLECTION --field=isActive,ASCENDING --field=makam,ASCENDING
+
+firebase firestore:indexes:add --collection-group=habits --query-scope=COLLECTION --field=frequency,ASCENDING --field=isActive,ASCENDING
+```
 
 ## 🎯 **Best Practices**
 
@@ -224,20 +318,126 @@ service cloud.firestore {
 - Use server-side validation
 - Implement proper user permissions
 
-## 📱 **Mobile App Integration**
+## 📱 **Mobile App Integration (NEW SCHEMA)**
 
 ### AsyncStorage Keys:
 ```javascript
 const STORAGE_KEYS = {
-  HABIT_COMPLETIONS: '@habit_completions_',
+  HABIT_LOGS: '@habit_logs_', // Updated for habitLogs
   LAST_SYNC: '@last_sync_date',
-  USER_DATA: '@user_data'
+  USER_DATA: '@user_data',
+  CACHED_HABITS: '@cached_habits'
 };
 ```
 
-### Offline Support:
+### Field Mapping Functions:
 ```javascript
-// Save to AsyncStorage first (instant UI)
-// Then sync to Firebase (background)
-// Handle conflicts on app restart
+// Map Firebase user data to app format
+const mapFirebaseUserToApp = (firebaseUser) => ({
+  id: firebaseUser.id,
+  name: firebaseUser.username, // schema: username
+  profileImage: firebaseUser.profilePic, // schema: profilePic  
+  lives: firebaseUser.can, // schema: can
+  gold: firebaseUser.altin, // schema: altin
+  makam: firebaseUser.makam // schema: makam
+});
+
+// Map Firebase habit data to app format
+const mapFirebaseHabitToApp = (firebaseHabit) => ({
+  id: firebaseHabit.id,
+  name: firebaseHabit.habitname, // schema: habitname
+  goldReward: firebaseHabit.reward, // schema: reward
+  type: firebaseHabit.frequency, // schema: frequency
+  isActive: firebaseHabit.isActive, // schema: isActive
+  makam: firebaseHabit.makam // schema: makam
+});
+
+// Map Firebase habit log to app format
+const mapFirebaseLogToApp = (firebaseLog) => ({
+  id: firebaseLog.id,
+  habitId: firebaseLog.habitID, // schema: habitID
+  userId: firebaseLog.userId, // schema: userId
+  date: firebaseLog.date, // schema: date
+  completed: firebaseLog.completed, // schema: completed
+  state: firebaseLog.state, // schema: state
+  completedAt: firebaseLog.createdAt?.toDate() // schema: createdAt
+});
+```
+
+### Offline Support Strategy:
+```javascript
+// 1. Save habit logs to AsyncStorage first (instant UI)
+const saveHabitLogOffline = async (userId, habitId, date, completed) => {
+  const key = `${STORAGE_KEYS.HABIT_LOGS}${userId}_${date}`;
+  const existingLogs = await AsyncStorage.getItem(key);
+  const logs = existingLogs ? JSON.parse(existingLogs) : [];
+  
+  const logEntry = {
+    habitID: habitId, // schema: habitID
+    userId: userId, // schema: userId
+    date: date, // schema: date
+    completed: completed, // schema: completed
+    state: 'pending', // schema: state
+    timestamp: new Date().toISOString(), // schema: timestamp
+    synced: false // Local field for sync tracking
+  };
+  
+  logs.push(logEntry);
+  await AsyncStorage.setItem(key, JSON.stringify(logs));
+  
+  // 2. Then sync to Firebase (background)
+  syncToFirebase(logEntry);
+};
+
+// 3. Handle conflicts on app restart
+const syncPendingLogs = async () => {
+  const keys = await AsyncStorage.getAllKeys();
+  const logKeys = keys.filter(key => key.startsWith(STORAGE_KEYS.HABIT_LOGS));
+  
+  for (const key of logKeys) {
+    const logs = JSON.parse(await AsyncStorage.getItem(key));
+    const unsyncedLogs = logs.filter(log => !log.synced);
+    
+    for (const log of unsyncedLogs) {
+      try {
+        await addDoc(collection(db, 'habitLogs'), {
+          habitID: log.habitID,
+          userId: log.userId,
+          date: log.date,
+          completed: log.completed,
+          state: 'approved',
+          createdAt: serverTimestamp(),
+          timestamp: log.timestamp
+        });
+        
+        // Mark as synced
+        log.synced = true;
+      } catch (error) {
+        console.warn('Failed to sync log:', error);
+      }
+    }
+    
+    await AsyncStorage.setItem(key, JSON.stringify(logs));
+  }
+};
+```
+
+### Error Handling:
+```javascript
+// Handle Firebase connection errors gracefully
+const safeFirebaseOperation = async (operation, fallback) => {
+  try {
+    return await operation();
+  } catch (error) {
+    console.warn('Firebase operation failed:', error);
+    return fallback();
+  }
+};
+
+// Example usage
+const getHabitsWithFallback = () => 
+  safeFirebaseOperation(
+    () => getActiveHabits(), // Try Firebase first
+    () => getCachedHabits()  // Fallback to cached data
+  );
 ``` 
