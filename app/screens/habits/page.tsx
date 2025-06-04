@@ -7,7 +7,7 @@ import UserHeader from '../../../components/UserHeader';
 import { getActiveHabits, getHabitCompletions, getUser } from '../../../services/firebase';
 import { Habit, HabitCompletion, User } from '../../../types';
 import Content from './content';
-import Title from './titleComponent';
+import Title from './TitleComponent';
 
 export default function HabitsScreen() {
   const [user, setUser] = useState<User | null>(null);
