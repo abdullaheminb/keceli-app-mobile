@@ -15,7 +15,7 @@
  */
 
 import React from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Text } from 'react-native';
 
 interface IconSymbolProps {
   name: string;
@@ -38,14 +38,8 @@ export function IconSymbol({ name, size, color }: IconSymbolProps) {
   };
 
   return (
-    <Text style={[styles.icon, { fontSize: size, color }]}>
+    <Text style={{ fontSize: size, color, textAlign: 'center' }}>
       {getIcon(name)}
     </Text>
   );
 }
-
-const styles = StyleSheet.create({
-  icon: {
-    textAlign: 'center',
-  },
-});

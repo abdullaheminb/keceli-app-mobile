@@ -14,12 +14,13 @@
  */
 
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import DateSelector from '../../../components/DateSelector';
 import HabitCard from '../../../components/HabitCard';
+import { Components, Layout, Typography } from '../../../css';
 import { Habit, HabitCompletion, User } from '../../../types';
-import { canUserAccessHabit } from '../../../utils/habitPermissions';
+import { canUserAccessHabit, filterHabitsByUserPermission } from '../../../utils/habitPermissions';
 
 interface ContentProps {
   user: User;
@@ -43,11 +44,11 @@ export default function Content({
   
   const renderDailyHabits = () => {
     const dailyHabits = habits.filter(habit => habit.type === 'daily');
-    const filteredHabits = dailyHabits.filter(habit => canUserAccessHabit(user, habit));
+    const filteredHabits = filterHabitsByUserPermission(dailyHabits, user);
 
     return (
-      <View style={styles.dailyHabitsContainer}>
-        <Text style={styles.sectionTitle}>Günlük Alışkanlıklar</Text>
+      <View style={{ padding: 16 }}>
+        <Text style={Typography.subtitleMedium}>Günlük Alışkanlıklar</Text>
         
         {filteredHabits.map((habit) => {
           const isCompleted = isHabitCompleted(habit.id);
@@ -66,7 +67,7 @@ export default function Content({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={Layout.container}>
       {/* Date Selector */}
       <DateSelector 
         selectedDate={selectedDate} 
@@ -74,11 +75,11 @@ export default function Content({
       />
       
       {/* Habits Section */}
-      <View style={styles.habitsSection}>
+      <View style={{ paddingVertical: 16 }}>
         {habits.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Henüz alışkanlık yok</Text>
-            <Text style={styles.emptySubtext}>
+          <View style={Components.emptyState}>
+            <Text style={Typography.subtitleMedium}>Henüz alışkanlık yok</Text>
+            <Text style={[Typography.bodySmall, { textAlign: 'center' }]}>
               Firebase'den habits çekilemiyor. Debug paneli ile test edin.
             </Text>
           </View>
@@ -93,9 +94,9 @@ export default function Content({
               
               if (dailyHabits.length > 0 && accessibleHabits.length === 0) {
                 return (
-                  <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>Bu seviye için alışkanlık yok</Text>
-                    <Text style={styles.emptySubtext}>
+                  <View style={Components.emptyState}>
+                    <Text style={Typography.subtitleMedium}>Bu seviye için alışkanlık yok</Text>
+                    <Text style={[Typography.bodySmall, { textAlign: 'center' }]}>
                       {dailyHabits.length} alışkanlık bulundu ama {user?.makam || 'mevcut'} seviyeniz için erişilebilir değil
                     </Text>
                   </View>
@@ -104,9 +105,9 @@ export default function Content({
               
               if (dailyHabits.length === 0) {
                 return (
-                  <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>Bu tarih için günlük alışkanlık yok</Text>
-                    <Text style={styles.emptySubtext}>
+                  <View style={Components.emptyState}>
+                    <Text style={Typography.subtitleMedium}>Bu tarih için günlük alışkanlık yok</Text>
+                    <Text style={[Typography.bodySmall, { textAlign: 'center' }]}>
                       Toplam {habits.length} alışkanlık bulundu ama hiçbiri 'daily' tipinde değil
                     </Text>
                   </View>
@@ -120,37 +121,4 @@ export default function Content({
       </View>
     </View>
   );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  habitsSection: {
-    paddingVertical: 16,
-  },
-  emptyState: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-  },
-  dailyHabitsContainer: {
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-}); 
+} 

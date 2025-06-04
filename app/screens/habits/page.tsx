@@ -19,9 +19,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, RefreshControl, SafeAreaView, ScrollView, Text, View } from 'react-native';
 
 import UserHeader from '../../../components/UserHeader';
+import { Colors, Components, Layout, Typography } from '../../../css';
 import { completeHabit, getActiveHabits, getHabitCompletions, getUser, uncompleteHabit } from '../../../services/firebase';
 import { Habit, HabitCompletion, User } from '../../../types';
 import Content from './content';
@@ -170,25 +171,25 @@ export default function HabitsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Yükleniyor...</Text>
+      <View style={Components.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={[Typography.body, { marginTop: 16 }]}>Yükleniyor...</Text>
       </View>
     );
   }
 
   if (!user) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Kullanıcı verileri yüklenemedi</Text>
+      <View style={Components.errorContainer}>
+        <Text style={Typography.errorText}>Kullanıcı verileri yüklenemedi</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={Layout.containerWithTopPadding}>
       <ScrollView 
-        style={styles.container}
+        style={Layout.container}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
@@ -209,33 +210,4 @@ export default function HabitsScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    paddingTop: 10, // Çentiğe çarpmaması için üst boşluk
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#e74c3c',
-  },
-}); 
+} 

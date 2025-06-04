@@ -16,7 +16,8 @@
  */
 
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Colors, Components, Layout, Typography } from '../css';
 
 interface DateSelectorProps {
   selectedDate: string; // YYYY-MM-DD format
@@ -58,12 +59,17 @@ export default function DateSelector({ selectedDate, onDateSelect }: DateSelecto
   const dates = generateDates();
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Günlük Takip</Text>
+    <View style={{
+      backgroundColor: Colors.surface,
+      paddingVertical: 16,
+      marginBottom: 8,
+      paddingLeft: 20,
+    }}>
+      <Text style={Typography.subtitleMedium}>Günlük Takip</Text>
       <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContainer}
+        contentContainerStyle={Layout.paddingHorizontal}
       >
         {dates.map((date, index) => {
           const dateString = formatDate(date);
@@ -75,35 +81,36 @@ export default function DateSelector({ selectedDate, onDateSelect }: DateSelecto
             <TouchableOpacity
               key={index}
               style={[
-                styles.dateItem,
-                isSelected && styles.selectedDate,
-                isTodayDate && styles.todayDate,
+                Components.dateItem,
+                isSelected && Components.dateItemSelected,
+                isTodayDate && Components.dateItemToday,
               ]}
               onPress={() => onDateSelect(dateString)}
             >
               <Text style={[
-                styles.dayName,
-                isSelected && styles.selectedText,
-                isTodayDate && styles.todayText,
+                Typography.captionBold,
+                isSelected && { color: Colors.textLight },
+                isTodayDate && { color: Colors.warning, fontWeight: '600' },
               ]}>
                 {dayName}
               </Text>
               <Text style={[
-                styles.day,
-                isSelected && styles.selectedText,
-                isTodayDate && styles.todayText,
+                Typography.subtitleMedium,
+                { marginBottom: 2 },
+                isSelected && { color: Colors.textLight },
+                isTodayDate && { color: Colors.warning, fontWeight: '600' },
               ]}>
                 {day}
               </Text>
               <Text style={[
-                styles.month,
-                isSelected && styles.selectedText,
-                isTodayDate && styles.todayText,
+                Typography.captionBold,
+                isSelected && { color: Colors.textLight },
+                isTodayDate && { color: Colors.warning, fontWeight: '600' },
               ]}>
                 {month}
               </Text>
               {isTodayDate && !isSelected && (
-                <View style={styles.todayDot} />
+                <View style={Components.todayDot} />
               )}
             </TouchableOpacity>
           );
@@ -111,70 +118,4 @@ export default function DateSelector({ selectedDate, onDateSelect }: DateSelecto
       </ScrollView>
     </View>
   );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#ffffff',
-    paddingVertical: 16,
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginLeft: 20,
-    marginBottom: 12,
-  },
-  scrollContainer: {
-    paddingHorizontal: 16,
-  },
-  dateItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 60,
-    height: 80,
-    marginHorizontal: 4,
-    borderRadius: 12,
-    backgroundColor: '#f8f9fa',
-    position: 'relative',
-  },
-  selectedDate: {
-    backgroundColor: '#007AFF',
-  },
-  todayDate: {
-    backgroundColor: '#fff3cd',
-    borderWidth: 2,
-    borderColor: '#f39c12',
-  },
-  dayName: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
-  day: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 2,
-  },
-  month: {
-    fontSize: 12,
-    color: '#666',
-  },
-  selectedText: {
-    color: 'white',
-  },
-  todayText: {
-    color: '#f39c12',
-    fontWeight: '600',
-  },
-  todayDot: {
-    position: 'absolute',
-    bottom: 8,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#f39c12',
-  },
-}); 
+} 

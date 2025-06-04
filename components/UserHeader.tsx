@@ -10,14 +10,14 @@
  * - Kullanıcı adı ve makam
  * - Can durumu (x/100 formatında)
  * - Altın miktarı
- * - Console debug logları
  * 
  * @usage <UserHeader user={userObject} />
  * @purpose User information display in habits screen
  */
 
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
+import { Colors, Components, Layout, Typography } from '../css';
 import { User } from '../types';
 import { convertMakamToString } from '../utils/habitPermissions';
 
@@ -34,144 +34,46 @@ export default function UserHeader({ user }: UserHeaderProps) {
   const userProfileImage = user?.profileImage;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.profileSection}>
-        <View style={styles.avatarContainer}>
+    <View style={Components.header}>
+      <View style={[Layout.row, Layout.alignCenter, { marginBottom: 16 }]}>
+        <View style={{ marginRight: 16 }}>
           {userProfileImage ? (
-            <Image source={{ uri: userProfileImage }} style={styles.avatar} />
+            <Image source={{ uri: userProfileImage }} style={Components.avatar} />
           ) : (
-            <View style={styles.defaultAvatar}>
-              <Text style={styles.avatarText}>
+            <View style={Components.avatarDefault}>
+              <Text style={{
+                fontSize: 24,
+                fontWeight: 'bold',
+                color: Colors.textLight,
+              }}>
                 {userName.charAt(0).toUpperCase()}
               </Text>
             </View>
           )}
         </View>
         
-        <View style={styles.userInfo}>
-          <Text style={styles.userName}>{userName}</Text>
-          <Text style={styles.userRank}>{userMakamString}</Text>
+        <View style={Layout.flex1}>
+          <Text style={Typography.subtitle}>{userName}</Text>
+          <Text style={Typography.bodySmall}>{userMakamString}</Text>
         </View>
       </View>
       
-      <View style={styles.statsSection}>
-        <View style={styles.livesContainer}>
-          <Text style={styles.label}>Canlar</Text>
-          <View style={styles.livesDisplay}>
-            <Text style={styles.livesText}>{userLives}/100</Text>
+      <View style={[Layout.row, Layout.spaceBetween]}>
+        <View style={{ flex: 1, marginRight: 20 }}>
+          <Text style={Typography.captionBold}>Canlar</Text>
+          <View style={Layout.row}>
+            <Text style={[Typography.bodyLarge, { marginLeft: 8 }]}>{userLives}/100</Text>
           </View>
         </View>
         
-        <View style={styles.goldContainer}>
-          <Text style={styles.label}>Altın</Text>
-          <View style={styles.goldDisplay}>
-            <Text style={styles.goldIcon}>🪙</Text>
-            <Text style={styles.goldAmount}>{userGold.toLocaleString()}</Text>
+        <View style={Layout.flex1}>
+          <Text style={Typography.captionBold}>Altın</Text>
+          <View style={[Layout.row, Layout.alignCenter]}>
+            <Text style={{ fontSize: 18, marginRight: 6 }}>🪙</Text>
+            <Text style={[Typography.bodyLarge, { color: Colors.gold }]}>{userGold.toLocaleString()}</Text>
           </View>
         </View>
       </View>
     </View>
   );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatarContainer: {
-    marginRight: 16,
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 3,
-    borderColor: '#f39c12',
-  },
-  defaultAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#f39c12',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#e67e22',
-  },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  userRank: {
-    fontSize: 14,
-    color: '#666',
-  },
-  statsSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  livesContainer: {
-    flex: 1,
-    marginRight: 20,
-  },
-  goldContainer: {
-    flex: 1,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  livesDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  livesText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginLeft: 8,
-  },
-  goldDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  goldIcon: {
-    fontSize: 18,
-    marginRight: 6,
-  },
-  goldAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#f39c12',
-  },
-}); 
+} 

@@ -12,7 +12,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { Colors, Components, Layout, Typography } from '../css';
 
 export default function RootScreen() {
   const router = useRouter();
@@ -52,47 +53,22 @@ export default function RootScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.text}>Yükleniyor...</Text>
+      <View style={Layout.containerCentered}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={[Typography.body, { marginTop: 20 }]}>Yükleniyor...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Nur Yolcusu</Text>
-      <Text style={styles.text}>Yönlendiriliyor...</Text>
+    <View style={Layout.containerCentered}>
+      <Text style={[Typography.titleMedium, { marginBottom: 20 }]}>Nur Yolcusu</Text>
+      <Text style={[Typography.body, { marginBottom: 20 }]}>Yönlendiriliyor...</Text>
       
       {/* Debug logout button */}
-      <TouchableOpacity style={styles.debugButton} onPress={handleLogout}>
-        <Text style={styles.debugButtonText}>Çıkış Yap (Debug)</Text>
+      <TouchableOpacity style={Components.buttonDebug} onPress={handleLogout}>
+        <Text style={Typography.buttonText}>Çıkış Yap (Debug)</Text>
       </TouchableOpacity>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  text: {
-    fontSize: 18,
-    marginBottom: 20,
-  },
-  debugButton: {
-    padding: 10,
-    backgroundColor: '#ff6b6b',
-  },
-  debugButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-});
