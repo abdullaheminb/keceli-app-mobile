@@ -1,3 +1,26 @@
+/**
+ * Habit Card Component
+ * 
+ * Tek bir alışkanlığı gösteren kart komponenti.
+ * Alışkanlık bilgilerini, tamamlanma durumunu ve
+ * ödüllerini görsel olarak sunar.
+ * 
+ * @features
+ * - Alışkanlık icon ve ismi
+ * - Açıklama metni
+ * - Altın ödülü gösterimi
+ * - Tamamlanma durumu (checkbox style)
+ * - Makam seviyesi gösterimi
+ * - Tıklanabilir toggle
+ * 
+ * @props
+ * - habit: Alışkanlık objesi
+ * - isCompleted: Tamamlanma durumu
+ * - onToggle: Toggle callback
+ * 
+ * @purpose Individual habit display and interaction
+ */
+
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Habit } from '../types';

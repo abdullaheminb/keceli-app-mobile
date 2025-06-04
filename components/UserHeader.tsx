@@ -1,3 +1,21 @@
+/**
+ * User Header Component
+ * 
+ * Kullanıcı bilgilerini gösteren header komponenti.
+ * Profil resmi, kullanıcı adı, makam, can ve altın bilgilerini
+ * görsel olarak sunar.
+ * 
+ * @features
+ * - Avatar gösterimi (resim veya initial)
+ * - Kullanıcı adı ve makam
+ * - Can durumu (x/100 formatında)
+ * - Altın miktarı
+ * - Console debug logları
+ * 
+ * @usage <UserHeader user={userObject} />
+ * @purpose User information display in habits screen
+ */
+
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { convertMakamToString } from '../app/screens/habits/TitleComponent';

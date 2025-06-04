@@ -1,3 +1,13 @@
+/**
+ * 404 Not Found Screen
+ * 
+ * Kullanıcı var olmayan bir route'a gittiğinde
+ * gösterilen 404 hata sayfası.
+ * 
+ * @purpose 404 error handling
+ * @routing Expo Router'ın otomatik catch-all route'u
+ */
+
 import { Link, Stack } from 'expo-router';
 import { StyleSheet } from 'react-native';
 

@@ -1,3 +1,15 @@
+/**
+ * Root App Layout
+ * 
+ * Uygulamanın ana layout'unu tanımlar. Expo Router'ın 
+ * file-based routing sistemi için root layout.
+ * Font yüklemesi, navigasyon yapısı ve global provider'lar
+ * burada tanımlanır.
+ * 
+ * @purpose Ana uygulama layout'u ve navigation wrapper
+ * @routing Root level routing configuration
+ */
+
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';

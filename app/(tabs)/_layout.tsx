@@ -1,3 +1,13 @@
+/**
+ * Tab Navigation Layout
+ * 
+ * Alt kısımda bulunan tab bar navigation'ın konfigürasyonu.
+ * 3 ana tab tanımlanmış: Alışkanlık, Macera, Profil
+ * 
+ * @purpose Bottom tab navigation structure
+ * @tabs index (Alışkanlık), adventure (Macera), profile (Profil)
+ */
+
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';

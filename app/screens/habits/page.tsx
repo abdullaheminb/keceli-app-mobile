@@ -1,3 +1,21 @@
+/**
+ * Habits Main Screen
+ * 
+ * Ana alışkanlık takip sayfası. Firebase'den kullanıcı verilerini,
+ * alışkanlıkları ve tamamlanmaları okur. Kullanıcı alışkanlıklarını
+ * takip edebilir, tarih seçebilir ve gelişimini görebilir.
+ * 
+ * @features
+ * - Kullanıcı bilgileri ve istatistikler
+ * - Günlük alışkanlık listesi  
+ * - Tarih seçimi ve geçmiş takibi
+ * - Alışkanlık tamamlama/geri alma
+ * - Debug mode ve mock data desteği
+ * 
+ * @purpose Core habit tracking functionality
+ * @database Firebase Firestore (read-only mode)
+ */
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';

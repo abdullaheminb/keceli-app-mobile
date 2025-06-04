@@ -1,3 +1,17 @@
+/**
+ * Adventure Screen
+ * 
+ * Macera ve oyunlaştırma özelliklerinin gösterildiği sayfa.
+ * Şu anda placeholder content var, gelecekte:
+ * - Quest'ler ve görevler
+ * - Başarımlar (achievements)
+ * - Leaderboard
+ * - Oyun mekanikleri
+ * 
+ * @purpose Gamification features
+ * @status Under development (placeholder)
+ */
+
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 

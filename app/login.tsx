@@ -1,17 +1,28 @@
+/**
+ * Login Screen
+ * 
+ * Kullanıcı girişi için login sayfası.
+ * Kullanıcı adı girişi ve profil seçimi yapılır.
+ * Başarılı girişten sonra tabs navigation'a yönlendirir.
+ * 
+ * @purpose Kullanıcı authentication ve profil seçimi
+ * @navigation /login route'una karşılık gelir
+ */
+
 // app/login.tsx
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
+  Alert,
   Pressable,
   StyleSheet,
-  Alert,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
@@ -38,7 +49,7 @@ export default function LoginScreen() {
 
         if (userData.role === 'child') {
           await AsyncStorage.setItem('profileId', user.id);
-          router.replace(`/profiles/${user.id}`);
+          router.replace('/(tabs)');
         } else {
           Alert.alert('Bu hesap çocuk hesabı değil.');
         }

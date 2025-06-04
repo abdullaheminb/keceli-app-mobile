@@ -1,3 +1,14 @@
+/**
+ * Profile Screen
+ * 
+ * Kullanıcı profil sayfası. Şu anda placeholder content var.
+ * Gelecekte kullanıcı bilgileri, istatistikler, ayarlar
+ * ve profil düzenleme özellikleri eklenecek.
+ * 
+ * @purpose User profile management
+ * @status Under development (placeholder)
+ */
+
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 

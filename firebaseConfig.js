@@ -1,3 +1,14 @@
+/**
+ * Firebase Configuration
+ * 
+ * Bu dosya Firebase projesinin bağlantı ayarlarını içerir.
+ * Firebase Authentication, Firestore Database ve diğer Firebase
+ * servislerinin kullanılabilmesi için gerekli konfigürasyon.
+ * 
+ * @purpose Firebase servislerini initialize etmek
+ * @usage import { db, auth } from './firebaseConfig'
+ */
+
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";

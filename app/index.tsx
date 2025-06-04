@@ -1,3 +1,13 @@
+/**
+ * App Entry Point - Splash Screen
+ * 
+ * Uygulamanın ilk açılışta gösterdiği splash screen.
+ * Kullanıcıyı login sayfasına yönlendirir.
+ * 
+ * @purpose Uygulama giriş noktası ve splash screen
+ * @navigation / route'una karşılık gelir
+ */
+
 // app/index.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';

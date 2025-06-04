@@ -1,3 +1,13 @@
+/**
+ * External Link Component
+ * 
+ * Dış bağlantılara yönlendiren link komponenti.
+ * Mobil cihazda browser açar.
+ * 
+ * @purpose External URL navigation
+ * @usage Dokümantasyon linkleri için kullanılır
+ */
+
 import { Href, Link } from 'expo-router';
 import { openBrowserAsync } from 'expo-web-browser';
 import { type ComponentProps } from 'react';

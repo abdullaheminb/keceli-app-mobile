@@ -1,3 +1,13 @@
+/**
+ * Collapsible Component
+ * 
+ * Açılır-kapanır içerik gösterimi için kullanılan component.
+ * Başlığa tıklandığında içerik gösterilir/gizlenir.
+ * 
+ * @purpose Expandable content sections
+ * @usage Explore sayfasında kullanılıyordu (şimdi silinmiş)
+ */
+
 import { PropsWithChildren, useState } from 'react';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 

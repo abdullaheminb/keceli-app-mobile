@@ -1,3 +1,18 @@
+/**
+ * Habits Content Component
+ * 
+ * Alışkanlıklar sayfasının ana içerik komponenti.
+ * Tarih seçici ve alışkanlık listesini içerir.
+ * 
+ * @features
+ * - Tarih seçici (DateSelector)
+ * - Alışkanlık kartları listesi
+ * - Alışkanlık tamamlama durumları
+ * - İnteraktif alışkanlık toggle
+ * 
+ * @purpose Main content area for habit tracking interface
+ */
+
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 

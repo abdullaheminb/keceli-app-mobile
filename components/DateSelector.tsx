@@ -1,3 +1,22 @@
+/**
+ * Date Selector Component
+ * 
+ * Tarih seçimi için horizontal scroll yapılabilen
+ * takvim komponenti. Kullanıcı farklı günleri seçebilir.
+ * 
+ * @features
+ * - Horizontal scrollable tarih listesi
+ * - Bugün vurgulama
+ * - Seçili tarih highlighting
+ * - Türkçe tarih formatları
+ * 
+ * @props
+ * - selectedDate: Seçili tarih (YYYY-MM-DD)
+ * - onDateSelect: Tarih seçim callback
+ * 
+ * @purpose Date selection for habit tracking
+ */
+
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
