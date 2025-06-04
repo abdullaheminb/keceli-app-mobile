@@ -19,10 +19,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import UserHeader from '../../../components/UserHeader';
-import { getActiveHabits, getHabitCompletions, getUser } from '../../../services/firebase';
+import { completeHabit, getActiveHabits, getHabitCompletions, getUser, uncompleteHabit } from '../../../services/firebase';
 import { Habit, HabitCompletion, User } from '../../../types';
 import Content from './content';
 
@@ -36,7 +36,6 @@ export default function HabitsScreen() {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
 
   const loadData = async () => {
     try {
@@ -46,23 +45,10 @@ export default function HabitsScreen() {
         return;
       }
 
-      console.log('Loading data for user:', profileId);
-
       // Load user data from Firebase (read-only)
       let userData = await getUser(profileId);
-      console.log('=== USER DATA FROM FIREBASE ===');
-      console.log('Raw userData:', userData);
-      
-      if (userData) {
-        const rawData = userData as any; // Firebase raw data
-        console.log('rawData.username:', rawData.username);
-        console.log('rawData.makam:', rawData.makam);
-        console.log('rawData.altin:', rawData.altin);
-        console.log('rawData.can:', rawData.can);
-      }
       
       if (!userData) {
-        console.log('User not found in Firebase, using default values');
         // Don't create user, just use default values for UI
         userData = {
           id: profileId,
@@ -71,44 +57,30 @@ export default function HabitsScreen() {
           gold: 0,
           makam: 0,
         };
-      } else {
-        console.log('Loaded existing user from Firebase:', userData);
       }
 
-      console.log('Final userData before setState:', userData);
-
       // Load habits and completions from Firebase (read-only)
-      console.log('Loading habits and completions...');
       const [habitsData, completionsData] = await Promise.all([
         getActiveHabits(), // Just read existing habits
         getHabitCompletions(profileId, selectedDate)
       ]);
 
-      console.log('=== FIREBASE DATA LOADED (READ-ONLY) ===');
-      console.log('User:', userData);
-      console.log('Habits:', habitsData);
-      console.log('Completions:', completionsData);
-      console.log('Selected Date:', selectedDate);
-      console.log('============================');
-
-      // Set state and immediately log what was set
+      // Set state
       setUser(userData);
       setHabits(habitsData);
       setCompletions(completionsData);
-      
-      console.log('State update called - userData name:', userData?.name);
       
     } catch (error) {
       console.error('Error loading data:', error);
       const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu';
       
-      // Show specific error message with fallback to mock data
+      // Show error message and retry option
       Alert.alert(
-        'Firebase Okuma Hatası', 
-        'Firebase\'den veri okunamadı. Mock data kullanılacak.\n\nHata: ' + errorMessage,
+        'Firebase Bağlantı Hatası', 
+        'Firebase\'den veri okunamadı. Lütfen internet bağlantınızı kontrol edin.\n\nHata: ' + errorMessage,
         [
           { text: 'Tekrar Dene', onPress: () => loadData() },
-          { text: 'Mock Data Kullan', onPress: () => loadMockData() }
+          { text: 'Tamam', style: 'cancel' }
         ]
       );
     } finally {
@@ -117,77 +89,18 @@ export default function HabitsScreen() {
     }
   };
 
-  const loadMockData = () => {
-    // Mock data for development
-    const mockUser: User = {
-      id: 'mock-user',
-      name: 'Ali Yılmaz', // Mock username
-      lives: 45, // Mock can (45/100)
-      gold: 1250, // Mock altin
-      makam: 3, // Mock makam (3 = Master seviyesi)
-    };
-
-    const mockHabits: Habit[] = [
-      {
-        id: '1',
-        name: 'Su İçme', // Mock habitname
-        description: 'Günde 2 litre su iç',
-        icon: '💧',
-        goldReward: 10,
-        type: 'daily',
-        isActive: true,
-        createdAt: new Date(),
-        makam: 0 // Çırak seviyesi
-      },
-      {
-        id: '2',
-        name: 'Kitap Okuma', // Mock habitname
-        description: '30 dakika kitap oku',
-        icon: '📚',
-        goldReward: 25,
-        type: 'daily',
-        isActive: true,
-        createdAt: new Date(),
-        makam: 1 // İşçi seviyesi
-      },
-      {
-        id: '3',
-        name: 'Egzersiz', // Mock habitname
-        description: '20 dakika spor yap',
-        icon: '🏃‍♂️',
-        goldReward: 30,
-        type: 'daily',
-        isActive: true,
-        createdAt: new Date(),
-        makam: 2 // Usta seviyesi
-      }
-    ];
-
-    console.log('Loading MOCK data...');
-    console.log('Mock User:', mockUser);
-    console.log('Mock Habits:', mockHabits);
-    
-    setUser(mockUser);
-    setHabits(mockHabits);
-    setCompletions([]);
-    setLoading(false);
-  };
-
   // Load completions when date changes
   useEffect(() => {
     const loadCompletions = async () => {
       if (user && user.id) {
         try {
-          console.log(`Loading completions for user: ${user.id}, date: ${selectedDate}`);
           const completionsData = await getHabitCompletions(user.id, selectedDate);
-          console.log(`Loaded ${completionsData.length} completions for ${selectedDate}:`, completionsData);
           setCompletions(completionsData);
         } catch (error) {
           console.error('Error loading completions:', error);
           setCompletions([]); // Clear completions on error
         }
       } else {
-        console.log('No user found, clearing completions');
         setCompletions([]);
       }
     };
@@ -198,17 +111,13 @@ export default function HabitsScreen() {
   // Load data on screen focus
   useFocusEffect(
     useCallback(() => {
-      // Use Firebase data instead of mock data
-      loadData();
-      // Uncomment below line and comment above line for mock data
-      // loadMockData();
+      loadData(); // Always load Firebase data
     }, [selectedDate])
   );
 
   const handleRefresh = () => {
     setRefreshing(true);
-    loadData();
-    // loadMockData();
+    loadData(); // Always reload Firebase data on pull-to-refresh
   };
 
   const isHabitCompleted = (habitId: string) => {
@@ -224,16 +133,20 @@ export default function HabitsScreen() {
 
     try {
       if (isCompleted) {
-        // Remove completion (local only)
+        // Call Firebase uncomplete function
+        await uncompleteHabit(user.id, habit.id, selectedDate, habit.goldReward);
+        
+        // Update local state after successful Firebase operation
         setCompletions(prev => prev.filter(c => c.habitId !== habit.id));
         setUser(prev => prev ? { 
           ...prev, 
           gold: Math.max(0, (prev.gold || 0) - habit.goldReward) 
         } : null);
-        
-        console.log(`Removed completion for habit: ${habit.name} on ${selectedDate} (LOCAL ONLY)`);
       } else {
-        // Add completion (local only)
+        // Call Firebase complete function
+        await completeHabit(user.id, habit.id, selectedDate, habit.goldReward);
+        
+        // Update local state after successful Firebase operation
         const newCompletion: HabitCompletion = {
           id: Date.now().toString(),
           habitId: habit.id,
@@ -248,12 +161,10 @@ export default function HabitsScreen() {
           ...prev, 
           gold: (prev.gold || 0) + habit.goldReward 
         } : null);
-        
-        console.log(`Added completion for habit: ${habit.name} on ${selectedDate} (LOCAL ONLY)`);
       }
     } catch (error) {
       console.error('Error toggling habit:', error);
-      Alert.alert('Hata', 'Local state güncellenirken bir hata oluştu');
+      Alert.alert('Hata', 'Alışkanlık güncellenirken bir hata oluştu');
     }
   };
 
@@ -284,50 +195,6 @@ export default function HabitsScreen() {
       >
         {/* User Header */}
         <UserHeader user={user || { id: '', name: 'Loading...', lives: 0, gold: 0, makam: '' }} />
-        
-        {/* Debug Section */}
-        <View style={styles.debugSection}>
-          <TouchableOpacity 
-            style={styles.debugToggle}
-            onPress={() => setShowDebug(!showDebug)}
-          >
-            <Text style={styles.debugToggleText}>
-              {showDebug ? '🔼 Firebase Debug' : '🔽 Firebase Debug'}
-            </Text>
-          </TouchableOpacity>
-          
-          {showDebug && (
-            <View style={styles.debugButtons}>
-              <TouchableOpacity 
-                style={styles.debugButton}
-                onPress={() => loadData()}
-              >
-                <Text style={styles.debugButtonText}>🔄 Reload Firebase Data (Read-Only)</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.debugButton}
-                onPress={() => loadMockData()}
-              >
-                <Text style={styles.debugButtonText}>📝 Use Mock Data</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.debugButton}
-                onPress={() => {
-                  console.log('Current State:');
-                  console.log('User:', user);
-                  console.log('Habits:', habits);
-                  console.log('Completions:', completions);
-                  console.log('Selected Date:', selectedDate);
-                  Alert.alert('Debug', `User: ${user?.name}\nHabits: ${habits.length}\nCompletions: ${completions.length}`);
-                }}
-              >
-                <Text style={styles.debugButtonText}>📊 Show Current State</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
         
         {/* Content Section - Calendar & Habits */}
         <Content
@@ -370,35 +237,5 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: '#e74c3c',
-  },
-  debugSection: {
-    padding: 16,
-  },
-  debugToggle: {
-    backgroundColor: '#007AFF',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  debugToggleText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  debugButtons: {
-    marginTop: 12,
-    gap: 8,
-  },
-  debugButton: {
-    backgroundColor: '#007AFF',
-    padding: 8,
-    borderRadius: 6,
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  debugButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
   },
 }); 

@@ -49,35 +49,15 @@ export const getMakamSeviye = (makam: number | undefined): number => {
  * User makam >= Habit makam ise erişebilir
  */
 export const canUserAccessHabit = (user: User, habit: Habit): boolean => {
-  console.log('=== HABIT ACCESS CHECK ===');
-  console.log('User:', user.name, 'User makam:', user.makam);
-  console.log('Habit:', habit.name, 'Habit makam:', habit.makam);
-  
   const userMakamLevel = getMakamSeviye(user.makam);
   const habitMakamLevel = getMakamSeviye(habit.makam);
   
-  console.log('User makam level:', userMakamLevel);
-  console.log('Habit makam level:', habitMakamLevel);
-  
-  const canAccess = userMakamLevel >= habitMakamLevel;
-  console.log('Can access:', canAccess);
-  console.log('========================');
-  
-  return canAccess;
+  return userMakamLevel >= habitMakamLevel;
 };
 
 /**
  * User'ın erişebileceği habit'leri filtreler
  */
 export const filterHabitsByUserPermission = (habits: Habit[], user: User): Habit[] => {
-  console.log('=== FILTERING HABITS BY PERMISSION ===');
-  console.log('Input habits count:', habits.length);
-  console.log('User:', user.name, 'makam:', user.makam);
-  
-  const filtered = habits.filter(habit => canUserAccessHabit(user, habit));
-  
-  console.log('Filtered habits count:', filtered.length);
-  console.log('===================================');
-  
-  return filtered;
+  return habits.filter(habit => canUserAccessHabit(user, habit));
 }; 

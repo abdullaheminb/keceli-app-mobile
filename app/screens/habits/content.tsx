@@ -41,6 +41,30 @@ export default function Content({
   isHabitCompleted 
 }: ContentProps) {
   
+  const renderDailyHabits = () => {
+    const dailyHabits = habits.filter(habit => habit.type === 'daily');
+    const filteredHabits = dailyHabits.filter(habit => canUserAccessHabit(user, habit));
+
+    return (
+      <View style={styles.dailyHabitsContainer}>
+        <Text style={styles.sectionTitle}>Günlük Alışkanlıklar</Text>
+        
+        {filteredHabits.map((habit) => {
+          const isCompleted = isHabitCompleted(habit.id);
+          
+          return (
+            <HabitCard
+              key={habit.id}
+              habit={habit}
+              isCompleted={isCompleted}
+              onToggle={() => onHabitToggle(habit)}
+            />
+          );
+        })}
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Date Selector */}
@@ -60,28 +84,7 @@ export default function Content({
           </View>
         ) : (
           <>
-            {/* Show daily habits for selected date */}
-            {(() => {
-              const filteredHabits = habits
-                .filter(habit => habit.type === 'daily')
-                .filter(habit => canUserAccessHabit(user, habit));
-              
-              console.log(`Total habits: ${habits.length}, Daily habits: ${habits.filter(h => h.type === 'daily').length}, Accessible habits: ${filteredHabits.length}`);
-              
-              return filteredHabits.map(habit => {
-                const isCompleted = isHabitCompleted(habit.id);
-                console.log(`Rendering habit: ${habit.name}, completed: ${isCompleted}, date: ${selectedDate}, makam: ${habit.makam}`);
-                
-                return (
-                  <HabitCard
-                    key={`${habit.id}-${selectedDate}`} // Unique key for each date
-                    habit={habit}
-                    isCompleted={isCompleted}
-                    onToggle={() => onHabitToggle(habit)}
-                  />
-                );
-              });
-            })()}
+            {renderDailyHabits()}
             
             {/* Show message if no accessible daily habits */}
             {(() => {
@@ -140,5 +143,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+  },
+  dailyHabitsContainer: {
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
   },
 }); 

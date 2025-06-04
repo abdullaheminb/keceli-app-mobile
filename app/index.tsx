@@ -12,61 +12,87 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function Index() {
+export default function RootScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState('');
 
   useEffect(() => {
-    const checkLogin = async () => {
+    const checkAuth = async () => {
       try {
         const profileId = await AsyncStorage.getItem('profileId');
-        console.log('AsyncStorage profileId:', profileId);
-        setDebugInfo(`ProfileId: ${profileId}`);
         
         if (profileId) {
-          console.log('Tabs sayfasına yönlendiriliyor:', profileId);
+          // Redirect to tabs
           router.replace('/(tabs)');
         } else {
-          console.log('Login ekranına yönlendiriliyor');
+          // Redirect to login
           router.replace('/login');
         }
-      } catch (err) {
-        console.error('Login kontrol hatası:', err);
+      } catch (error) {
+        console.error('Error checking auth:', error);
         router.replace('/login');
       } finally {
         setLoading(false);
       }
     };
 
-    checkLogin();
+    checkAuth();
   }, []);
 
-  const clearStorage = async () => {
-    await AsyncStorage.clear();
-    console.log('AsyncStorage temizlendi');
-    setDebugInfo('Storage temizlendi');
-    // Yeniden yönlendir
-    router.replace('/login');
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.clear();
+      router.replace('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 20 }}>{debugInfo}</Text>
-        <Pressable onPress={clearStorage} style={{ marginTop: 20, padding: 10, backgroundColor: '#ff6b6b' }}>
-          <Text style={{ color: 'white' }}>Clear Storage (Debug)</Text>
-        </Pressable>
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.text}>Yükleniyor...</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Yönlendiriliyor...</Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>Nur Yolcusu</Text>
+      <Text style={styles.text}>Yönlendiriliyor...</Text>
+      
+      {/* Debug logout button */}
+      <TouchableOpacity style={styles.debugButton} onPress={handleLogout}>
+        <Text style={styles.debugButtonText}>Çıkış Yap (Debug)</Text>
+      </TouchableOpacity>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  text: {
+    fontSize: 18,
+    marginBottom: 20,
+  },
+  debugButton: {
+    padding: 10,
+    backgroundColor: '#ff6b6b',
+  },
+  debugButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+});

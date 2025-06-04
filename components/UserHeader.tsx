@@ -26,31 +26,12 @@ interface UserHeaderProps {
 }
 
 export default function UserHeader({ user }: UserHeaderProps) {
-  console.log('=== UserHeader RENDER ===');
-  console.log('UserHeader received user:', user);
-  console.log('User name field:', user?.name);
-  console.log('User makam field:', user?.makam);
-  console.log('User lives field:', user?.lives);
-  console.log('User gold field:', user?.gold);
-  console.log('Raw user object keys:', user ? Object.keys(user) : 'user is null');
-  if (user) {
-    console.log('All user fields:', JSON.stringify(user, null, 2));
-  }
-  console.log('========================');
-  
   // Safe access to user properties
   const userName = user?.name || 'Kullanıcı';
   const userMakamString = convertMakamToString(user?.makam);
   const userGold = user?.gold || 0;
   const userLives = user?.lives || 0;
   const userProfileImage = user?.profileImage;
-
-  console.log('Processed values:');
-  console.log('userName:', userName);
-  console.log('userMakam (number):', user?.makam);
-  console.log('userMakamString:', userMakamString);
-  console.log('userGold:', userGold);
-  console.log('userLives:', userLives);
 
   return (
     <View style={styles.container}>
