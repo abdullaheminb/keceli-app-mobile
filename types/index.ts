@@ -13,6 +13,8 @@ export interface Habit {
   description?: string;
   icon: string;
   goldReward: number;
+  canReward?: number; // Can/life reward
+  points?: number; // Points reward
   type: 'daily' | 'weekly' | 'monthly';
   isActive: boolean;
   createdAt: Date;

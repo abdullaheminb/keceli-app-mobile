@@ -85,6 +85,13 @@ export const Typography = StyleSheet.create({
     letterSpacing: 0.5,
   },
   
+  // Gün isimleri için küçük font
+  dayName: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  
   // Special
   link: {
     fontSize: 16,

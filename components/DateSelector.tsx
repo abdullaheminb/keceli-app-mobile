@@ -2,14 +2,15 @@
  * Date Selector Component
  * 
  * Kullanıcının farklı tarihleri seçmesini sağlayan yatay kaydırmalı takvim komponenti.
- * Geçmiş ve gelecek günleri gösterir, seçili tarihi vurgular.
+ * 8 günlük dönem gösterir (önceki cumartesiden başlayarak).
  * 
  * @features
- * - 30 gün geçmiş + bugün + 30 gün gelecek gösterimi
+ * - 8 gün gösterimi (önceki cumartesiden başlayarak)
  * - Seçili tarihi vurgulama
- * - Türkçe ay isimleri ve gün kısaltmaları
+ * - Türkçe gün kısaltmaları (Cmt, Pz, Pzt, Sl, Çrş, Prş, Cm)
+ * - Gelecek tarihleri disable etme
+ * - Sadece bugün ve geçmiş tarihleri seçebilme
  * - Yatay scroll ile tarih gezinme
- * - Bugünü otomatik merkeze alma
  * 
  * @purpose Date selection for habit tracking
  * @used_in app/screens/habits/content.tsx - tarih seçimi için
@@ -29,10 +30,25 @@ export default function DateSelector({ selectedDate, onDateSelect }: DateSelecto
     const dates = [];
     const today = new Date();
     
-    // Bugünden önceki 3 gün, bugün, ve sonraki 3 gün
-    for (let i = -3; i <= 3; i++) {
+    // Bugünün hangi gün olduğunu bul (0 = Pazar, 1 = Pazartesi, ..., 6 = Cumartesi)
+    const todayDayOfWeek = today.getDay();
+    
+    // Önceki cumartesiyi bul
+    // Eğer bugün cumartesi ise (6), önceki cumartesi 7 gün önce
+    // Eğer bugün pazar ise (0), önceki cumartesi 1 gün önce
+    // Eğer bugün pazartesi ise (1), önceki cumartesi 2 gün önce
+    // ...
+    let daysToLastSaturday;
+    if (todayDayOfWeek === 6) { // Bugün cumartesi
+      daysToLastSaturday = 7; // Önceki cumartesi
+    } else {
+      daysToLastSaturday = todayDayOfWeek + 1; // Cumartesi = 6, bu gün - cumartesi
+    }
+    
+    // Önceki cumartesiden başlayarak 8 gün ekle
+    for (let i = 0; i < 8; i++) {
       const date = new Date(today);
-      date.setDate(today.getDate() + i);
+      date.setDate(today.getDate() - daysToLastSaturday + i);
       dates.push(date);
     }
     
@@ -46,7 +62,11 @@ export default function DateSelector({ selectedDate, onDateSelect }: DateSelecto
   const formatDisplayDate = (date: Date) => {
     const day = date.getDate();
     const month = date.toLocaleDateString('tr-TR', { month: 'short' });
-    const dayName = date.toLocaleDateString('tr-TR', { weekday: 'short' });
+    
+    // Türkçe tam gün isimleri
+    const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+    const dayOfWeek = date.getDay();
+    const dayName = dayNames[dayOfWeek];
     
     return { day, month, dayName };
   };
@@ -54,6 +74,13 @@ export default function DateSelector({ selectedDate, onDateSelect }: DateSelecto
   const isToday = (date: Date) => {
     const today = new Date();
     return date.toDateString() === today.toDateString();
+  };
+
+  const isFutureDate = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Bugünün başlangıcı
+    date.setHours(0, 0, 0, 0); // Karşılaştırma tarihinin başlangıcı
+    return date > today;
   };
 
   const dates = generateDates();
@@ -75,6 +102,7 @@ export default function DateSelector({ selectedDate, onDateSelect }: DateSelecto
           const dateString = formatDate(date);
           const isSelected = dateString === selectedDate;
           const isTodayDate = isToday(date);
+          const isDisabled = isFutureDate(date);
           const { day, month, dayName } = formatDisplayDate(date);
           
           return (
@@ -84,13 +112,16 @@ export default function DateSelector({ selectedDate, onDateSelect }: DateSelecto
                 Components.dateItem,
                 isSelected && Components.dateItemSelected,
                 isTodayDate && Components.dateItemToday,
+                isDisabled && { opacity: 0.4 },
               ]}
-              onPress={() => onDateSelect(dateString)}
+              onPress={() => !isDisabled && onDateSelect(dateString)}
+              disabled={isDisabled}
             >
               <Text style={[
-                Typography.captionBold,
+                Typography.dayName,
                 isSelected && { color: Colors.textLight },
                 isTodayDate && { color: Colors.warning, fontWeight: '600' },
+                isDisabled && { color: Colors.textSecondary },
               ]}>
                 {dayName}
               </Text>
@@ -99,6 +130,7 @@ export default function DateSelector({ selectedDate, onDateSelect }: DateSelecto
                 { marginBottom: 2 },
                 isSelected && { color: Colors.textLight },
                 isTodayDate && { color: Colors.warning, fontWeight: '600' },
+                isDisabled && { color: Colors.textSecondary },
               ]}>
                 {day}
               </Text>
@@ -106,6 +138,7 @@ export default function DateSelector({ selectedDate, onDateSelect }: DateSelecto
                 Typography.captionBold,
                 isSelected && { color: Colors.textLight },
                 isTodayDate && { color: Colors.warning, fontWeight: '600' },
+                isDisabled && { color: Colors.textSecondary },
               ]}>
                 {month}
               </Text>

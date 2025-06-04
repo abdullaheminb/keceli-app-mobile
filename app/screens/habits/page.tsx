@@ -21,6 +21,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, SafeAreaView, ScrollView, Text, View } from 'react-native';
 
+import RewardBanner from '../../../components/RewardBanner';
 import UserHeader from '../../../components/UserHeader';
 import { Colors, Components, Layout, Typography } from '../../../css';
 import { completeHabit, getActiveHabits, getHabitCompletions, getUser, uncompleteHabit } from '../../../services/firebase';
@@ -37,6 +38,8 @@ export default function HabitsScreen() {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showRewardBanner, setShowRewardBanner] = useState(false);
+  const [lastReward, setLastReward] = useState({ gold: 0, can: 0, points: 0 });
 
   const loadData = async () => {
     try {
@@ -138,7 +141,8 @@ export default function HabitsScreen() {
       setCompletions(prev => prev.filter(c => c.habitId !== habit.id));
       setUser(prev => prev ? { 
         ...prev, 
-        gold: Math.max(0, (prev.gold || 0) - habit.goldReward) 
+        gold: Math.max(0, (prev.gold || 0) - habit.goldReward),
+        lives: Math.max(0, (prev.lives || 0) - (habit.canReward || 0))
       } : null);
     } else {
       // Immediately update local state (complete)
@@ -154,16 +158,25 @@ export default function HabitsScreen() {
       setCompletions(prev => [...prev, newCompletion]);
       setUser(prev => prev ? { 
         ...prev, 
-        gold: (prev.gold || 0) + habit.goldReward 
+        gold: (prev.gold || 0) + habit.goldReward,
+        lives: (prev.lives || 0) + (habit.canReward || 0)
       } : null);
+
+      // Show reward banner
+      setLastReward({
+        gold: habit.goldReward,
+        can: habit.canReward || 0,
+        points: habit.points || 0
+      });
+      setShowRewardBanner(true);
     }
 
     // 🔄 BACKGROUND SYNC - Sync with Firebase in background
     try {
       if (isCompleted) {
-        await uncompleteHabit(user.id, habit.id, selectedDate, habit.goldReward);
+        await uncompleteHabit(user.id, habit.id, selectedDate, habit.goldReward, habit.canReward || 0);
       } else {
-        await completeHabit(user.id, habit.id, selectedDate, habit.goldReward);
+        await completeHabit(user.id, habit.id, selectedDate, habit.goldReward, habit.canReward || 0);
       }
     } catch (error) {
       console.error('Error syncing habit with Firebase:', error);
@@ -183,15 +196,20 @@ export default function HabitsScreen() {
         setCompletions(prev => [...prev, rollbackCompletion]);
         setUser(prev => prev ? { 
           ...prev, 
-          gold: (prev.gold || 0) + habit.goldReward 
+          gold: (prev.gold || 0) + habit.goldReward,
+          lives: (prev.lives || 0) + (habit.canReward || 0)
         } : null);
       } else {
         // Rollback: remove the completion
         setCompletions(prev => prev.filter(c => c.habitId !== habit.id));
         setUser(prev => prev ? { 
           ...prev, 
-          gold: Math.max(0, (prev.gold || 0) - habit.goldReward) 
+          gold: Math.max(0, (prev.gold || 0) - habit.goldReward),
+          lives: Math.max(0, (prev.lives || 0) - (habit.canReward || 0))
         } : null);
+        
+        // Hide reward banner on rollback
+        setShowRewardBanner(false);
       }
       
       Alert.alert('Senkronizasyon Hatası', 'Değişiklik Firebase\'e kaydedilemedi. Lütfen tekrar deneyin.');
@@ -237,6 +255,16 @@ export default function HabitsScreen() {
           isHabitCompleted={isHabitCompleted}
         />
       </ScrollView>
+      
+      {/* Reward Banner */}
+      {showRewardBanner && (
+        <RewardBanner
+          goldReward={lastReward.gold}
+          canReward={lastReward.can}
+          points={lastReward.points}
+          onHide={() => setShowRewardBanner(false)}
+        />
+      )}
     </SafeAreaView>
   );
 } 

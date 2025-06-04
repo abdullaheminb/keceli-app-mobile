@@ -44,20 +44,24 @@ export const getUser = async (userId: string): Promise<User | null> => {
 export const updateUserGold = async (userId: string, goldAmount: number): Promise<void> => {
   try {
     const userRef = doc(db, 'users', userId);
-    
-    // Check if user exists first
-    const userDoc = await getDoc(userRef);
-    if (!userDoc.exists()) {
-      return;
-    }
-    
-    // Use new schema field name: altin
     await updateDoc(userRef, {
-      altin: increment(goldAmount), // schema: altin (not gold)
-      lastUpdated: serverTimestamp()
+      altin: increment(goldAmount) // schema: altin
     });
   } catch (error) {
     console.error('Error updating user gold:', error);
+    throw error;
+  }
+};
+
+// Update user can (lives)
+const updateUserCan = async (userId: string, canAmount: number): Promise<void> => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      can: increment(canAmount) // schema: can
+    });
+  } catch (error) {
+    console.error('Error updating user can:', error);
     throw error;
   }
 };
@@ -83,6 +87,8 @@ export const getActiveHabits = async (): Promise<Habit[]> => {
         description: data.description || '',
         icon: data.icon || '📝',
         goldReward: data.reward || data.points || 0, // schema: reward, points
+        canReward: data.canReward || 0, // schema: canReward
+        points: data.points || 0, // schema: points
         type: data.frequency || 'daily', // schema: frequency (daily/weekly)
         isActive: data.isActive !== false, // schema: isActive
         createdAt: data.createdAt?.toDate() || new Date(),
@@ -137,7 +143,7 @@ export const getHabitCompletions = async (userId: string, date: string): Promise
   }
 };
 
-export const completeHabit = async (userId: string, habitId: string, date: string, goldReward: number): Promise<void> => {
+export const completeHabit = async (userId: string, habitId: string, date: string, goldReward: number, canReward: number = 0): Promise<void> => {
   try {
     // 🔍 First, check if a log already exists for this habit+date combination
     const existingLogQuery = query(
@@ -176,9 +182,20 @@ export const completeHabit = async (userId: string, habitId: string, date: strin
 
     // Try to update user's gold (altin field)
     try {
-      await updateUserGold(userId, goldReward);
+      if (goldReward > 0) {
+        await updateUserGold(userId, goldReward);
+      }
     } catch (goldError) {
       console.warn('Could not update user gold, user may not exist:', goldError);
+    }
+
+    // Try to update user's can (can field)
+    try {
+      if (canReward > 0) {
+        await updateUserCan(userId, canReward);
+      }
+    } catch (canError) {
+      console.warn('Could not update user can, user may not exist:', canError);
     }
   } catch (error) {
     console.error('Error completing habit:', error);
@@ -186,7 +203,7 @@ export const completeHabit = async (userId: string, habitId: string, date: strin
   }
 };
 
-export const uncompleteHabit = async (userId: string, habitId: string, date: string, goldReward: number): Promise<void> => {
+export const uncompleteHabit = async (userId: string, habitId: string, date: string, goldReward: number, canReward: number = 0): Promise<void> => {
   try {
     // 🔍 Find any habit log for this habit+date combination (not just completed ones)
     const logQuery = query(
@@ -211,9 +228,20 @@ export const uncompleteHabit = async (userId: string, habitId: string, date: str
 
       // Try to remove gold from user (altin field)
       try {
-        await updateUserGold(userId, -goldReward);
+        if (goldReward > 0) {
+          await updateUserGold(userId, -goldReward);
+        }
       } catch (goldError) {
         console.warn('Could not update user gold, user may not exist:', goldError);
+      }
+
+      // Try to remove can from user (can field)
+      try {
+        if (canReward > 0) {
+          await updateUserCan(userId, -canReward);
+        }
+      } catch (canError) {
+        console.warn('Could not update user can, user may not exist:', canError);
       }
     }
   } catch (error) {
