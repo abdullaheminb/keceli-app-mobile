@@ -132,23 +132,46 @@ export default function HabitsScreen() {
 
     const isCompleted = isHabitCompleted(habit.id);
 
+    // 🚀 OPTIMISTIC UPDATE - Update UI immediately for instant feedback
+    if (isCompleted) {
+      // Immediately update local state (uncomplete)
+      setCompletions(prev => prev.filter(c => c.habitId !== habit.id));
+      setUser(prev => prev ? { 
+        ...prev, 
+        gold: Math.max(0, (prev.gold || 0) - habit.goldReward) 
+      } : null);
+    } else {
+      // Immediately update local state (complete)
+      const newCompletion: HabitCompletion = {
+        id: Date.now().toString(),
+        habitId: habit.id,
+        userId: user.id,
+        date: selectedDate,
+        completed: true,
+        completedAt: new Date(),
+        goldEarned: habit.goldReward
+      };
+      setCompletions(prev => [...prev, newCompletion]);
+      setUser(prev => prev ? { 
+        ...prev, 
+        gold: (prev.gold || 0) + habit.goldReward 
+      } : null);
+    }
+
+    // 🔄 BACKGROUND SYNC - Sync with Firebase in background
     try {
       if (isCompleted) {
-        // Call Firebase uncomplete function
         await uncompleteHabit(user.id, habit.id, selectedDate, habit.goldReward);
-        
-        // Update local state after successful Firebase operation
-        setCompletions(prev => prev.filter(c => c.habitId !== habit.id));
-        setUser(prev => prev ? { 
-          ...prev, 
-          gold: Math.max(0, (prev.gold || 0) - habit.goldReward) 
-        } : null);
       } else {
-        // Call Firebase complete function
         await completeHabit(user.id, habit.id, selectedDate, habit.goldReward);
-        
-        // Update local state after successful Firebase operation
-        const newCompletion: HabitCompletion = {
+      }
+    } catch (error) {
+      console.error('Error syncing habit with Firebase:', error);
+      
+      // 🔄 ROLLBACK - Revert optimistic update on error
+      if (isCompleted) {
+        // Rollback: re-add the completion
+        const rollbackCompletion: HabitCompletion = {
           id: Date.now().toString(),
           habitId: habit.id,
           userId: user.id,
@@ -157,15 +180,21 @@ export default function HabitsScreen() {
           completedAt: new Date(),
           goldEarned: habit.goldReward
         };
-        setCompletions(prev => [...prev, newCompletion]);
+        setCompletions(prev => [...prev, rollbackCompletion]);
         setUser(prev => prev ? { 
           ...prev, 
           gold: (prev.gold || 0) + habit.goldReward 
         } : null);
+      } else {
+        // Rollback: remove the completion
+        setCompletions(prev => prev.filter(c => c.habitId !== habit.id));
+        setUser(prev => prev ? { 
+          ...prev, 
+          gold: Math.max(0, (prev.gold || 0) - habit.goldReward) 
+        } : null);
       }
-    } catch (error) {
-      console.error('Error toggling habit:', error);
-      Alert.alert('Hata', 'Alışkanlık güncellenirken bir hata oluştu');
+      
+      Alert.alert('Senkronizasyon Hatası', 'Değişiklik Firebase\'e kaydedilemedi. Lütfen tekrar deneyin.');
     }
   };
 
