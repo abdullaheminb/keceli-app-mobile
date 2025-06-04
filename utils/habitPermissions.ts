@@ -1,4 +1,12 @@
-import { getMakamName } from '../app/screens/habits/title';
+/**
+ * Habit Permissions Utilities
+ * 
+ * Kullanıcının makam seviyesine göre hangi alışkanlıklara
+ * erişebileceğini kontrol eden utility fonksiyonları.
+ * 
+ * @purpose User permission checking for habits based on makam level
+ */
+
 import { Habit, User } from '../types';
 
 /**
@@ -8,11 +16,6 @@ import { Habit, User } from '../types';
 export const getMakamSeviye = (makam: number | undefined): number => {
   return makam || 0; // Firebase'den number gelir, yoksa 0
 };
-
-/**
- * Makam number'ını string'e çeviren utility (header.ts'ten import)
- */
-export const convertMakamToNumber = getMakamName; // Alias
 
 /**
  * User'ın bir habit'e erişip erişemeyeceğini kontrol eder
