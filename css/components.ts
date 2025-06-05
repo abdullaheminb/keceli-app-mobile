@@ -68,7 +68,9 @@ export const Components = StyleSheet.create({
   },
   
   cardDisabled: {
-    opacity: 0.5,
+    backgroundColor: Colors.surfaceVariant,
+    opacity: 0.6,
+    borderColor: Colors.borderLight,
   },
   
   // Header
@@ -157,11 +159,13 @@ export const Components = StyleSheet.create({
   
   todayDot: {
     position: 'absolute',
-    bottom: 8,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    bottom: 2,
+    left: '50%',
+    transform: [{ translateX: -2 }],
+    width: 4,
+    height: 4,
     backgroundColor: Colors.warning,
+    borderRadius: 2,
   },
   
   // Empty states
@@ -185,6 +189,44 @@ export const Components = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.background,
   },
-});
+
+  // Habits sections
+  habitsSection: {
+    padding: 16,
+  },
+
+  habitsContainer: {
+    paddingVertical: 16,
+  },
+
+  // Weekly progress text
+  weeklyProgressText: {
+    paddingLeft: 16,
+    paddingBottom: 8,
+    color: Colors.textSecondary,
+  },
+
+  // Center text for empty states
+  centerText: {
+    textAlign: 'center' as const,
+  },
+
+  // Completed habits toggle
+  completedToggle: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.surfaceVariant,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+
+  // Completed habits container
+  completedContainer: {
+    overflow: 'hidden' as const,
+  },
+} as const);
 
 export default Components; 

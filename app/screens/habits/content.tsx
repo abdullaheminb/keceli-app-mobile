@@ -13,8 +13,8 @@
  * @purpose Main content area for habit tracking interface
  */
 
-import React from 'react';
-import { Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Animated, Text, TouchableOpacity, View } from 'react-native';
 
 import DateSelector from '../../../components/DateSelector';
 import HabitCard from '../../../components/HabitCard';
@@ -52,15 +52,40 @@ export default function Content({
   isWeeklyHabitCompletedForDate 
 }: ContentProps) {
   
-  const renderDailyHabits = () => {
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [completedAnimation] = useState(new Animated.Value(0));
+
+  // Toggle completed section
+  const toggleCompleted = () => {
+    const toValue = showCompleted ? 0 : 1;
+    setShowCompleted(!showCompleted);
+    
+    Animated.timing(completedAnimation, {
+      toValue,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  };
+  
+  const renderDailyHabits = (showOnlyCompleted = false) => {
     const dailyHabits = habits.filter(habit => habit.type === 'daily');
     const filteredHabits = filterHabitsByUserPermission(dailyHabits, user);
+    
+    // Filter based on completion status
+    const visibleHabits = filteredHabits.filter(habit => {
+      const isCompleted = isHabitCompleted(habit.id);
+      return showOnlyCompleted ? isCompleted : !isCompleted;
+    });
+
+    if (visibleHabits.length === 0) return null;
 
     return (
-      <View style={{ padding: 16 }}>
-        <Text style={Typography.subtitleMedium}>Günlük Alışkanlıklar</Text>
+      <View style={showOnlyCompleted ? {} : Components.habitsSection}>
+        {!showOnlyCompleted && (
+          <Text style={Typography.subtitleMedium}>Günlük Alışkanlıklar</Text>
+        )}
         
-        {filteredHabits.map((habit) => {
+        {visibleHabits.map((habit) => {
           const isCompleted = isHabitCompleted(habit.id);
           
           return (
@@ -69,6 +94,9 @@ export default function Content({
               habit={habit}
               isCompleted={isCompleted}
               onToggle={() => onHabitToggle(habit)}
+              animateCompletion={!showOnlyCompleted}
+              showRepeatInsteadOfReward={showOnlyCompleted}
+              completionCount={showOnlyCompleted ? 1 : 0}
             />
           );
         })}
@@ -76,20 +104,37 @@ export default function Content({
     );
   };
 
-  const renderWeeklyHabits = () => {
+  const renderWeeklyHabits = (showOnlyCompleted = false) => {
     const weeklyHabits = habits.filter(habit => habit.type === 'weekly');
     const filteredHabits = filterHabitsByUserPermission(weeklyHabits, user);
     
     // Only show weekly habits that should be visible on selected date
-    const visibleHabits = filteredHabits.filter(habit => 
-      shouldShowWeeklyHabit(habit, selectedDate)
-    );
+    const visibleHabits = filteredHabits.filter(habit => {
+      if (!shouldShowWeeklyHabit(habit, selectedDate)) return false;
+      
+      // Filter based on completion status
+      const isCompleted = habit.weekday === 'any' 
+        ? isWeeklyHabitCompletedForDate(habit.id)
+        : isWeeklyHabitCompleted(habit, selectedDate, weeklyCompletions);
+      
+      const isDisabled = isWeeklyHabitDisabled(habit, selectedDate, weeklyCompletions);
+      
+      if (showOnlyCompleted) {
+        // Tamamlanmış bölümde: gerçekten completed olanlar VEYA disabled olanlar (kotaya ulaşan weekly)
+        return isCompleted || (habit.weekday === 'any' && isDisabled);
+      } else {
+        // Ana bölümde: completed olmayan VE disabled olmayan
+        return !isCompleted && !isDisabled;
+      }
+    });
 
     if (visibleHabits.length === 0) return null;
 
     return (
-      <View style={{ padding: 16 }}>
-        <Text style={Typography.subtitleMedium}>Haftalık Alışkanlıklar</Text>
+      <View style={showOnlyCompleted ? {} : Components.habitsSection}>
+        {!showOnlyCompleted && (
+          <Text style={Typography.subtitleMedium}>Haftalık Alışkanlıklar</Text>
+        )}
         
         {visibleHabits.map((habit) => {
           // Weekly habits için günlük completion durumunu kontrol et
@@ -104,18 +149,39 @@ export default function Content({
             ? getWeeklyHabitCompletionCount(habit.id, selectedDate, weeklyCompletions)
             : 0;
           
+          // Kotaya ulaşan weekly task'lar için özel durum
+          const isQuotaCompleted = habit.weekday === 'any' && 
+            completionCount >= (habit.repeat || 1) && 
+            showOnlyCompleted;
+          
+          // Kotaya ulaşmış ama o gün tamamlanmamış ise gri göster
+          const isQuotaCompletedButNotToday = isQuotaCompleted && !isCompleted;
+          
           return (
             <View key={habit.id}>
               <HabitCard
                 habit={habit}
-                isCompleted={isCompleted}
+                isCompleted={isQuotaCompleted ? true : isCompleted}
                 onToggle={() => onHabitToggle(habit)}
-                disabled={isDisabled}
+                disabled={isQuotaCompleted ? true : isDisabled}
+                animateCompletion={!showOnlyCompleted}
+                hideCheckbox={isQuotaCompleted} // Kotaya ulaşanlarda checkbox gizle
+                showRepeatInsteadOfReward={showOnlyCompleted}
+                completionCount={showOnlyCompleted ? 
+                  (habit.weekday === 'any' ? completionCount : 1) : 0
+                }
+                forceGrayStyle={isQuotaCompletedButNotToday}
               />
               {/* Show weekly progress for "any" day habits */}
-              {habit.weekday === 'any' && (
-                <Text style={[Typography.bodySmall, { paddingLeft: 16, paddingBottom: 8, color: '#666' }]}>
+              {habit.weekday === 'any' && !showOnlyCompleted && (
+                <Text style={[Typography.bodySmall, Components.weeklyProgressText]}>
                   Bu hafta: {completionCount}/{habit.repeat || 1} tamamlandı
+                </Text>
+              )}
+              {/* Show quota completed message */}
+              {isQuotaCompleted && (
+                <Text style={[Typography.bodySmall, Components.weeklyProgressText, { color: '#4CAF50' }]}>
+                  Bu hafta tamamlandı ({completionCount}/{habit.repeat || 1})
                 </Text>
               )}
             </View>
@@ -123,6 +189,64 @@ export default function Content({
         })}
       </View>
     );
+  };
+
+  // Count completed habits
+  const getCompletedCount = () => {
+    const dailyCompleted = habits.filter(habit => 
+      habit.type === 'daily' && 
+      canUserAccessHabit(user, habit) && 
+      isHabitCompleted(habit.id)
+    ).length;
+    
+    const weeklyCompleted = habits.filter(habit => {
+      if (habit.type !== 'weekly' || !canUserAccessHabit(user, habit)) return false;
+      if (!shouldShowWeeklyHabit(habit, selectedDate)) return false;
+      
+      const isCompleted = habit.weekday === 'any' 
+        ? isWeeklyHabitCompletedForDate(habit.id)
+        : isWeeklyHabitCompleted(habit, selectedDate, weeklyCompletions);
+      
+      const isDisabled = isWeeklyHabitDisabled(habit, selectedDate, weeklyCompletions);
+      const completionCount = habit.weekday === 'any' 
+        ? getWeeklyHabitCompletionCount(habit.id, selectedDate, weeklyCompletions)
+        : 0;
+      
+      // Count as completed if: actually completed OR quota reached (disabled)
+      return isCompleted || (habit.weekday === 'any' && completionCount >= (habit.repeat || 1));
+    }).length;
+    
+    return dailyCompleted + weeklyCompleted;
+  };
+
+  // Check if there are any habits to show in completed section
+  const hasCompletedHabits = () => {
+    // Check daily habits
+    const hasCompletedDaily = habits.some(habit => 
+      habit.type === 'daily' && 
+      canUserAccessHabit(user, habit) && 
+      isHabitCompleted(habit.id)
+    );
+    
+    // Check weekly habits
+    const hasCompletedWeekly = habits.some(habit => {
+      if (habit.type !== 'weekly' || !canUserAccessHabit(user, habit)) return false;
+      if (!shouldShowWeeklyHabit(habit, selectedDate)) return false;
+      
+      const isCompleted = habit.weekday === 'any' 
+        ? isWeeklyHabitCompletedForDate(habit.id)
+        : isWeeklyHabitCompleted(habit, selectedDate, weeklyCompletions);
+      
+      const isDisabled = isWeeklyHabitDisabled(habit, selectedDate, weeklyCompletions);
+      const completionCount = habit.weekday === 'any' 
+        ? getWeeklyHabitCompletionCount(habit.id, selectedDate, weeklyCompletions)
+        : 0;
+      
+      // Show if: actually completed OR quota reached (disabled)
+      return isCompleted || (habit.weekday === 'any' && completionCount >= (habit.repeat || 1));
+    });
+    
+    return hasCompletedDaily || hasCompletedWeekly;
   };
 
   return (
@@ -134,20 +258,48 @@ export default function Content({
       />
       
       {/* Habits Section */}
-      <View style={{ paddingVertical: 16 }}>
+      <View style={Components.habitsContainer}>
         {habits.length === 0 ? (
           <View style={Components.emptyState}>
             <Text style={Typography.subtitleMedium}>Henüz alışkanlık yok</Text>
-            <Text style={[Typography.bodySmall, { textAlign: 'center' }]}>
+            <Text style={[Typography.bodySmall, Components.centerText]}>
               Firebase'den habits çekilemiyor. Debug paneli ile test edin.
             </Text>
           </View>
         ) : (
           <>
-            {renderDailyHabits()}
-            {renderWeeklyHabits()}
+            {renderDailyHabits(false)}
+            {renderWeeklyHabits(false)}
             
-            {/* Show message if no accessible daily habits */}
+            {/* Completed Habits Section */}
+            {hasCompletedHabits() && (
+              <View style={Components.habitsSection}>
+                <TouchableOpacity onPress={toggleCompleted} style={Components.completedToggle}>
+                  <Text style={Typography.subtitleMedium}>
+                    Tamamladıkların ({getCompletedCount()})
+                  </Text>
+                  <Text style={Typography.subtitleMedium}>
+                    {showCompleted ? '▲' : '▼'}
+                  </Text>
+                </TouchableOpacity>
+                
+                <Animated.View style={[
+                  Components.completedContainer,
+                  {
+                    maxHeight: completedAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 1000],
+                    }),
+                    opacity: completedAnimation,
+                  }
+                ]}>
+                  {renderDailyHabits(true)}
+                  {renderWeeklyHabits(true)}
+                </Animated.View>
+              </View>
+            )}
+            
+            {/* Show message if no accessible habits */}
             {(() => {
               const dailyHabits = habits.filter(habit => habit.type === 'daily');
               const accessibleHabits = dailyHabits.filter(habit => canUserAccessHabit(user, habit));
@@ -156,7 +308,7 @@ export default function Content({
                 return (
                   <View style={Components.emptyState}>
                     <Text style={Typography.subtitleMedium}>Bu seviye için alışkanlık yok</Text>
-                    <Text style={[Typography.bodySmall, { textAlign: 'center' }]}>
+                    <Text style={[Typography.bodySmall, Components.centerText]}>
                       {dailyHabits.length} alışkanlık bulundu ama {user?.makam || 'mevcut'} seviyeniz için erişilebilir değil
                     </Text>
                   </View>
@@ -167,7 +319,7 @@ export default function Content({
                 return (
                   <View style={Components.emptyState}>
                     <Text style={Typography.subtitleMedium}>Bu tarih için günlük alışkanlık yok</Text>
-                    <Text style={[Typography.bodySmall, { textAlign: 'center' }]}>
+                    <Text style={[Typography.bodySmall, Components.centerText]}>
                       Toplam {habits.length} alışkanlık bulundu ama hiçbiri 'daily' tipinde değil
                     </Text>
                   </View>

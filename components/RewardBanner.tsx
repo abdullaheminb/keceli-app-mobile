@@ -53,45 +53,49 @@ export default function RewardBanner({ goldReward, canReward, points, onHide }: 
   return (
     <Animated.View style={{
       position: 'absolute',
-      bottom: 80,
-      left: 0,
-      right: 0,
+      bottom: 100, // Tab bar'dan daha uzak
+      left: '50%',
+      transform: [
+        { translateX: -75 }, // Center için yarısı kadar sola
+        { translateY: slideAnim }
+      ],
       backgroundColor: Colors.success,
-      paddingHorizontal: 20,
-      paddingVertical: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: 16,
+      gap: 12,
+      borderRadius: 20,
       elevation: 5,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: -2 },
       shadowOpacity: 0.25,
       shadowRadius: 4,
-      transform: [{ translateY: slideAnim }],
+      minWidth: 150, // Minimum genişlik
     }}>
       {goldReward > 0 && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Text style={{ fontSize: 16 }}>🪙</Text>
-          <Text style={[Typography.buttonText, { fontSize: 14, fontWeight: '600' }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+          <Text style={{ fontSize: 14 }}>🪙</Text>
+          <Text style={[Typography.buttonText, { fontSize: 12, fontWeight: '600' }]}>
             +{goldReward}
           </Text>
         </View>
       )}
       
       {canReward > 0 && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Text style={{ fontSize: 16 }}>❤️</Text>
-          <Text style={[Typography.buttonText, { fontSize: 14, fontWeight: '600' }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+          <Text style={{ fontSize: 14 }}>❤️</Text>
+          <Text style={[Typography.buttonText, { fontSize: 12, fontWeight: '600' }]}>
             +{canReward}
           </Text>
         </View>
       )}
       
       {points > 0 && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Text style={{ fontSize: 16 }}>⭐</Text>
-          <Text style={[Typography.buttonText, { fontSize: 14, fontWeight: '600' }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+          <Text style={{ fontSize: 14 }}>⭐</Text>
+          <Text style={[Typography.buttonText, { fontSize: 12, fontWeight: '600' }]}>
             +{points}
           </Text>
         </View>
