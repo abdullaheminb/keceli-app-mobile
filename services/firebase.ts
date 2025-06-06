@@ -7,11 +7,421 @@ import {
   increment,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Habit, HabitCompletion, User } from '../types';
+
+// ====================================================================
+// 🎯 MODULAR COMPLETION SYSTEM (NEW SUBCOLLECTION APPROACH)
+// ====================================================================
+
+/**
+ * Interface for completion data structure
+ */
+interface CompletionData {
+  id: string;
+  completed: boolean;
+  completedAt: any; // Firebase timestamp
+  dates: string[]; // Array of completion dates
+  progress: number;
+  state: string;
+}
+
+/**
+ * Generic completion service for any completion type (habits, quests, events, etc.)
+ * This modular approach allows easy extension for future features
+ */
+class CompletionService {
+  private collectionName: string;
+
+  constructor(collectionName: string) {
+    this.collectionName = collectionName;
+  }
+
+  /**
+   * Get user's completions for a specific date
+   */
+  async getCompletionsForDate(userId: string, date: string): Promise<CompletionData[]> {
+    try {
+      const completionsRef = collection(db, 'users', userId, this.collectionName);
+      const snapshot = await getDocs(completionsRef);
+      
+      return snapshot.docs
+        .map(doc => ({
+          id: doc.id, // This is the habitId/questId/eventId
+          ...doc.data()
+        } as CompletionData))
+        .filter(completion => 
+          completion.completed === true && 
+          completion.dates && 
+          completion.dates.includes(date)
+        );
+    } catch (error) {
+      console.error(`Error getting ${this.collectionName} for date:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Get user's completions for a date range (for weekly habits, etc.)
+   */
+  async getCompletionsForDateRange(userId: string, startDate: string, endDate: string): Promise<CompletionData[]> {
+    try {
+      const completionsRef = collection(db, 'users', userId, this.collectionName);
+      const snapshot = await getDocs(completionsRef);
+      
+      return snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as CompletionData))
+        .filter(completion => {
+          if (!completion.completed || !completion.dates) return false;
+          
+          // Check if any date in the array falls within the range
+          return completion.dates.some(date => 
+            date >= startDate && date <= endDate
+          );
+        });
+    } catch (error) {
+      console.error(`Error getting ${this.collectionName} for date range:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Check if a specific item is completed for a date
+   */
+  async isCompleted(userId: string, itemId: string, date: string): Promise<boolean> {
+    try {
+      const completionRef = doc(db, 'users', userId, this.collectionName, itemId);
+      const completionDoc = await getDoc(completionRef);
+      
+      if (completionDoc.exists()) {
+        const data = completionDoc.data() as CompletionData;
+        return data.completed === true && data.dates && data.dates.includes(date);
+      }
+      
+      return false;
+    } catch (error) {
+      console.error(`Error checking ${this.collectionName} completion:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Complete an item (habit, quest, event, etc.)
+   */
+  async complete(
+    userId: string, 
+    itemId: string, 
+    date: string, 
+    itemData: any,
+    customData: any = {}
+  ): Promise<void> {
+    try {
+      const completionRef = doc(db, 'users', userId, this.collectionName, itemId);
+      const existingCompletion = await getDoc(completionRef);
+      
+      if (existingCompletion.exists()) {
+        const data = existingCompletion.data() as CompletionData;
+        const currentDates = data.dates || [];
+        
+        // Only add date if it's not already in the array
+        if (!currentDates.includes(date)) {
+          await updateDoc(completionRef, {
+            completed: true,
+            completedAt: serverTimestamp(),
+            dates: [...currentDates, date], // Add new date to array
+            progress: increment(1), // Increment total progress
+            state: itemData.approval === 'manual' ? 'pending' : 'approved',
+            ...customData
+          });
+        }
+      } else {
+        // Create new completion with dates array
+        await setDoc(completionRef, {
+          completed: true,
+          completedAt: serverTimestamp(),
+          dates: [date], // Initialize with first date
+          progress: 1,
+          state: itemData.approval === 'manual' ? 'pending' : 'approved',
+          ...customData
+        });
+      }
+
+    } catch (error) {
+      console.error(`Error completing ${this.collectionName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Uncomplete an item for a specific date
+   */
+  async uncomplete(userId: string, itemId: string, date: string): Promise<void> {
+    try {
+      const completionRef = doc(db, 'users', userId, this.collectionName, itemId);
+      const existingCompletion = await getDoc(completionRef);
+      
+      if (existingCompletion.exists()) {
+        const data = existingCompletion.data() as CompletionData;
+        const currentDates = data.dates || [];
+        
+        if (currentDates.includes(date)) {
+          const updatedDates = currentDates.filter(d => d !== date);
+          
+          if (updatedDates.length > 0) {
+            // Still has other completion dates, just remove this date
+            await updateDoc(completionRef, {
+              dates: updatedDates,
+              progress: increment(-1),
+              completedAt: serverTimestamp()
+            });
+          } else {
+            // No more completion dates, mark as uncompleted
+            await updateDoc(completionRef, {
+              completed: false,
+              dates: [],
+              progress: 0,
+              completedAt: serverTimestamp(),
+              state: 'cancelled'
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error uncompleting ${this.collectionName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get completion progress for specific date (how many times completed on that date)
+   */
+  async getProgress(userId: string, itemId: string, date: string): Promise<number> {
+    try {
+      const completionRef = doc(db, 'users', userId, this.collectionName, itemId);
+      const completionDoc = await getDoc(completionRef);
+      
+      if (completionDoc.exists()) {
+        const data = completionDoc.data() as CompletionData;
+        if (data.dates && data.dates.includes(date)) {
+          // Count how many times this date appears (for same-day multiple completions)
+          return data.dates.filter(d => d === date).length;
+        }
+      }
+      
+      return 0;
+    } catch (error) {
+      console.error(`Error getting ${this.collectionName} progress:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get total completion count for an item
+   */
+  async getTotalProgress(userId: string, itemId: string): Promise<number> {
+    try {
+      const completionRef = doc(db, 'users', userId, this.collectionName, itemId);
+      const completionDoc = await getDoc(completionRef);
+      
+      if (completionDoc.exists()) {
+        const data = completionDoc.data() as CompletionData;
+        return data.progress || 0;
+      }
+      
+      return 0;
+    } catch (error) {
+      console.error(`Error getting total ${this.collectionName} progress:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get all completion dates for an item
+   */
+  async getCompletionDates(userId: string, itemId: string): Promise<string[]> {
+    try {
+      const completionRef = doc(db, 'users', userId, this.collectionName, itemId);
+      const completionDoc = await getDoc(completionRef);
+      
+      if (completionDoc.exists()) {
+        const data = completionDoc.data() as CompletionData;
+        return data.dates || [];
+      }
+      
+      return [];
+    } catch (error) {
+      console.error(`Error getting ${this.collectionName} completion dates:`, error);
+      return [];
+    }
+  }
+}
+
+// ====================================================================
+// 🎯 SPECIFIC SERVICE INSTANCES
+// ====================================================================
+
+// Habits completion service
+export const habitsCompletionService = new CompletionService('completedHabits');
+
+// Future services (ready for extension)
+export const questsCompletionService = new CompletionService('completedQuests');
+export const eventsCompletionService = new CompletionService('completedEvents');
+export const challengesCompletionService = new CompletionService('completedChallenges');
+
+// ====================================================================
+// 🎯 HABIT-SPECIFIC WRAPPER FUNCTIONS (NEW SUBCOLLECTION APPROACH)
+// ====================================================================
+
+/**
+ * Get user's habit completions for a specific date
+ */
+export const getHabitCompletionsNew = async (userId: string, date: string): Promise<HabitCompletion[]> => {
+  try {
+    const completions = await habitsCompletionService.getCompletionsForDate(userId, date);
+    
+    return completions.map(completion => ({
+      id: completion.id,
+      habitId: completion.id, // Document ID is the habitId
+      userId: userId,
+      date: date, // The specific date we're querying for
+      completed: completion.completed,
+      completedAt: completion.completedAt?.toDate(),
+      goldEarned: 0 // Will be calculated from habit data
+    }));
+  } catch (error) {
+    console.error('Error fetching habit completions (new):', error);
+    return [];
+  }
+};
+
+/**
+ * Get user's weekly habit completions
+ */
+export const getWeeklyHabitCompletionsNew = async (userId: string, selectedDate: string): Promise<HabitCompletion[]> => {
+  try {
+    // Calculate week range (Saturday to Friday)
+    const date = new Date(selectedDate);
+    const day = date.getDay();
+    
+    const start = new Date(date);
+    const daysToSaturday = day === 6 ? 0 : (day + 1);
+    start.setDate(date.getDate() - daysToSaturday);
+    
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    
+    const startDate = start.toISOString().split('T')[0];
+    const endDate = end.toISOString().split('T')[0];
+    
+    const completions = await habitsCompletionService.getCompletionsForDateRange(userId, startDate, endDate);
+    
+    // Flatten the results - create one HabitCompletion for each date in the range
+    const flattenedCompletions: HabitCompletion[] = [];
+    
+    completions.forEach(completion => {
+      completion.dates.forEach(completionDate => {
+        if (completionDate >= startDate && completionDate <= endDate) {
+          flattenedCompletions.push({
+            id: `${completion.id}_${completionDate}`, // Unique ID for each date completion
+            habitId: completion.id,
+            userId: userId,
+            date: completionDate,
+            completed: completion.completed,
+            completedAt: completion.completedAt?.toDate(),
+            goldEarned: 0
+          });
+        }
+      });
+    });
+    
+    return flattenedCompletions;
+  } catch (error) {
+    console.error('Error fetching weekly habit completions (new):', error);
+    return [];
+  }
+};
+
+/**
+ * Complete a habit using new subcollection approach
+ */
+export const completeHabitNew = async (
+  userId: string, 
+  habitId: string, 
+  date: string, 
+  goldReward: number, 
+  canReward: number = 0,
+  habitData: Partial<Habit> = {}
+): Promise<void> => {
+  try {
+    // Complete the habit in subcollection
+    await habitsCompletionService.complete(userId, habitId, date, habitData);
+
+    // Update user's gold and can with maxHealth check
+    await updateUserRewards(userId, goldReward, canReward);
+
+  } catch (error) {
+    console.error('Error completing habit (new):', error);
+    throw error;
+  }
+};
+
+/**
+ * Uncomplete a habit using new subcollection approach
+ */
+export const uncompleteHabitNew = async (
+  userId: string, 
+  habitId: string, 
+  date: string, 
+  goldReward: number, 
+  canReward: number = 0
+): Promise<void> => {
+  try {
+    // Uncomplete the habit in subcollection
+    await habitsCompletionService.uncomplete(userId, habitId, date);
+
+    // Subtract user's gold and can
+    await updateUserRewards(userId, -goldReward, -canReward);
+
+  } catch (error) {
+    console.error('Error uncompleting habit (new):', error);
+    throw error;
+  }
+};
+
+/**
+ * Helper function to update user rewards with maxHealth check
+ */
+const updateUserRewards = async (userId: string, goldAmount: number, canAmount: number): Promise<void> => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    
+    // Update gold
+    if (goldAmount !== 0) {
+      await updateDoc(userRef, {
+        altin: increment(goldAmount)
+      });
+    }
+    
+    // Update can with maxHealth check
+    if (canAmount !== 0) {
+      await updateUserCan(userId, canAmount);
+    }
+  } catch (error) {
+    console.error('Error updating user rewards:', error);
+    throw error;
+  }
+};
+
+// ====================================================================
+// 🎯 EXISTING USER AND HABIT FUNCTIONS (UNCHANGED)
+// ====================================================================
 
 // User operations
 export const getUser = async (userId: string): Promise<User | null> => {

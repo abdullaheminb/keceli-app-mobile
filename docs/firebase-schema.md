@@ -10,10 +10,22 @@
   "makam": "number", // 0-4 (Çırak, İşçi, Usta, Master, Efsane)
   "altin": "number", // Gold amount
   "can": "number",   // Lives amount
+  "maxHealth": "number", // Max lives limit
   "profilePic": "string", // Optional profile image URL
   "ihlas": "number",
-  "role": "string",
-  "maxHealth": "number"
+  "role": "string"
+}
+```
+
+#### 1.1. `users > [userId] > completedHabits` Subcollection
+```javascript
+// Document ID: {habitId} (same as the habit's document ID)
+{
+  "completed": "boolean", // Task completion status (used for uncheck or multi-repeat habits)
+  "completedAt": "timestamp", // When the habit was last completed/updated
+  "dates": ["string"], // Array of completion dates (YYYY-MM-DD format) ["2025-01-15", "2025-01-16", ...]
+  "progress": "number", // How many times the task was repeated (total count)
+  "state": "string" // "pending" if manual approval, "approved" if auto approval
 }
 ```
 
@@ -31,19 +43,6 @@
   "repeat": "number", // Shows how many times it can be completed in given frequency
   "reward": "number", // Shows how much gold habit rewards
   "weekday": "string" // Shows whichday this habits shown (relevant only for weekly frequencies)
-}
-```
-### 3. `habitLogs` Collection
-```javascript
-// Document ID: {habitId}
-{
-  "habitID": "string", // Related habits document ID
-  "completed": "boolean",     // Shows if habit completed
-  "createdAt": "timestamp", // Shows when habit is completed
-  "date": "string", // Shows the day of completed habit
-  "state": "string", // Shows if task is approved or not
-  "timestamp": "string", // Timestamp
-  "userId": "string" // Related users document ID
 }
 ```
 
@@ -71,72 +70,75 @@ const usersSnapshot = await db.collection('users').get();
 const allUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 ```
 
-### Habits Okuma (NEW SCHEMA):
+### Completed Habits Okuma (NEW SUBCOLLECTION SCHEMA):
 ```javascript
-// All habits with new field names
-const habitsSnapshot = await db.collection('habits').get();
-const habits = habitsSnapshot.docs.map(doc => {
-  const data = doc.data();
-  return {
-    id: doc.id,
-    name: data.habitname, // schema: habitname
-    goldReward: data.reward, // schema: reward
-    type: data.frequency, // schema: frequency (daily/weekly)
-    isActive: data.isActive, // schema: isActive
-    makam: data.makam, // schema: makam (0-4)
-    canReward: data.canReward, // schema: canReward
-    points: data.points, // schema: points
-    repeat: data.repeat, // schema: repeat
-    weekday: data.weekday, // schema: weekday
-    approval: data.approval // schema: approval
-  };
-});
+// Get user's completed habits for a specific date
+const date = '2025-01-15';
+const completedHabitsRef = collection(db, 'users', userId, 'completedHabits');
+const completedHabitsSnapshot = await getDocs(completedHabitsRef);
 
-// Makam seviyesine göre filter (client-side - güvenlik için)
-const userAccessibleHabits = habits.filter(habit => user.makam >= habit.makam);
+const completedHabits = completedHabitsSnapshot.docs
+  .map(doc => ({
+    id: doc.id, // habitId
+    ...doc.data()
+  }))
+  .filter(completion => 
+    completion.completed === true && 
+    completion.dates && 
+    completion.dates.includes(date)
+  );
+
+// Get specific habit completion status
+const habitCompletionRef = doc(db, 'users', userId, 'completedHabits', habitId);
+const habitCompletionDoc = await getDoc(habitCompletionRef);
+
+if (habitCompletionDoc.exists()) {
+  const completionData = habitCompletionDoc.data();
+  const isCompletedToday = completionData.completed === true && 
+                          completionData.dates && 
+                          completionData.dates.includes(date);
+  
+  // Get all completion dates for this habit
+  const allCompletionDates = completionData.dates || [];
+  console.log('Habit completed on:', allCompletionDates);
+}
 ```
 
-### Habit Logs Okuma (NEW SCHEMA):
+### Weekly Habits Okuma (NEW SUBCOLLECTION SCHEMA):
 ```javascript
-// Belirli kullanıcının belirli gün completion'ları
-const date = '2025-01-15';
-const completionsQuery = query(
-  collection(db, 'habitLogs'),
-  where('userId', '==', userId), // schema: userId
-  where('date', '==', date), // schema: date
-  where('completed', '==', true) // schema: completed
-);
+// Get user's weekly habit completions
+const startDate = '2025-01-13'; // Saturday
+const endDate = '2025-01-19';   // Friday
 
-const completionsSnapshot = await getDocs(completionsQuery);
-const completions = completionsSnapshot.docs.map(doc => {
-  const data = doc.data();
-  return {
-    id: doc.id,
-    habitId: data.habitID, // schema: habitID
-    userId: data.userId, // schema: userId
-    date: data.date, // schema: date
-    completed: data.completed, // schema: completed
-    state: data.state, // schema: state ('approved', 'pending', 'cancelled')
-    createdAt: data.createdAt.toDate(), // schema: createdAt
-    timestamp: data.timestamp // schema: timestamp
-  };
+const completedHabitsRef = collection(db, 'users', userId, 'completedHabits');
+const weeklyCompletionsSnapshot = await getDocs(completedHabitsRef);
+
+const weeklyCompletions = weeklyCompletionsSnapshot.docs
+  .map(doc => ({
+    habitId: doc.id,
+    ...doc.data()
+  }))
+  .filter(completion => {
+    if (!completion.completed || !completion.dates) return false;
+    
+    // Check if any completion date falls within the week range
+    return completion.dates.some(date => 
+      date >= startDate && date <= endDate
+    );
+  });
+
+// Get detailed completion history
+weeklyCompletions.forEach(completion => {
+  const weekDates = completion.dates.filter(date => 
+    date >= startDate && date <= endDate
+  );
+  console.log(`Habit ${completion.habitId} completed on:`, weekDates);
 });
-
-// Kullanıcının belirli tarih aralığındaki tüm logs
-const startDate = '2025-01-01';
-const endDate = '2025-01-31';
-const logsQuery = query(
-  collection(db, 'habitLogs'),
-  where('userId', '==', userId),
-  where('date', '>=', startDate),
-  where('date', '<=', endDate),
-  orderBy('date', 'desc')
-);
 ```
 
 ## ✍️ **Data Writing Examples**
 
-### User Creation (NEW SCHEMA):
+### User Creation (UPDATED SCHEMA):
 ```javascript
 const createUser = async (userId, userData) => {
   const userRef = doc(db, 'users', userId);
@@ -152,88 +154,121 @@ const createUser = async (userId, userData) => {
     role: 'user', // schema: role
     createdAt: serverTimestamp()
   });
+  
+  // Note: completedHabits subcollection will be created automatically when first habit is completed
 };
 ```
 
-### Habit Creation (NEW SCHEMA):
+### Habit Completion (NEW SUBCOLLECTION SCHEMA):
 ```javascript
-const createHabit = async (habitData) => {
-  const habitRef = await addDoc(collection(db, 'habits'), {
-    habitname: habitData.name, // schema: habitname
-    makam: habitData.makam || 0, // schema: makam
-    approval: 'auto', // schema: approval
-    canReward: habitData.canReward || 0, // schema: canReward
-    frequency: habitData.type || 'daily', // schema: frequency
-    isActive: true, // schema: isActive
-    points: habitData.goldReward || 0, // schema: points
-    repeat: 1, // schema: repeat
-    reward: habitData.goldReward || 0, // schema: reward
-    weekday: '', // schema: weekday
-    createdAt: serverTimestamp()
-  });
+const completeHabit = async (userId, habitId, date, habitData) => {
+  // Reference to the specific habit completion document
+  const habitCompletionRef = doc(db, 'users', userId, 'completedHabits', habitId);
   
-  return habitRef.id;
-};
-```
-
-### Habit Log Creation (NEW SCHEMA):
-```javascript
-const completeHabit = async (userId, habitId, date) => {
-  // Create habit log
-  const logRef = await addDoc(collection(db, 'habitLogs'), {
-    habitID: habitId, // schema: habitID
-    completed: true, // schema: completed
-    createdAt: serverTimestamp(), // schema: createdAt
-    date: date, // schema: date
-    state: 'approved', // schema: state
-    timestamp: new Date().toISOString(), // schema: timestamp
-    userId: userId // schema: userId
-  });
+  // Check if completion already exists
+  const existingCompletion = await getDoc(habitCompletionRef);
   
-  // Update user's gold (altin field)
-  const userRef = doc(db, 'users', userId);
-  await updateDoc(userRef, {
-    altin: increment(goldReward) // schema: altin
-  });
-  
-  return logRef.id;
-};
-```
-
-### Habit Log Update (NEW SCHEMA):
-```javascript
-const uncompleteHabit = async (userId, habitId, date) => {
-  // Find the habit log
-  const logsQuery = query(
-    collection(db, 'habitLogs'),
-    where('userId', '==', userId),
-    where('habitID', '==', habitId),
-    where('date', '==', date),
-    where('completed', '==', true)
-  );
-  
-  const snapshot = await getDocs(logsQuery);
-  
-  if (!snapshot.empty) {
-    const logDoc = snapshot.docs[0];
+  if (existingCompletion.exists()) {
+    // Update existing completion - add new date to array
+    const data = existingCompletion.data();
+    const currentDates = data.dates || [];
     
-    // Update the log
-    await updateDoc(logDoc.ref, {
-      completed: false, // schema: completed
-      state: 'cancelled', // schema: state
-      timestamp: new Date().toISOString() // schema: timestamp
-    });
-    
-    // Reduce user's gold
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      altin: increment(-goldReward) // schema: altin
+    // Only add date if it's not already in the array
+    if (!currentDates.includes(date)) {
+      await updateDoc(habitCompletionRef, {
+        completed: true,
+        completedAt: serverTimestamp(),
+        dates: [...currentDates, date], // Add new date to array
+        progress: increment(1), // Increment total completion count
+        state: habitData.approval === 'manual' ? 'pending' : 'approved'
+      });
+    }
+  } else {
+    // Create new completion document with dates array
+    await setDoc(habitCompletionRef, {
+      completed: true,
+      completedAt: serverTimestamp(),
+      dates: [date], // Initialize with first completion date
+      progress: 1, // First completion
+      state: habitData.approval === 'manual' ? 'pending' : 'approved'
     });
   }
+  
+  // Update user's gold and can
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, {
+    altin: increment(habitData.goldReward || 0),
+    can: increment(habitData.canReward || 0)
+  });
 };
 ```
 
-## 🔒 **Security Rules**
+### Habit Uncompletion (NEW SUBCOLLECTION SCHEMA):
+```javascript
+const uncompleteHabit = async (userId, habitId, date, habitData) => {
+  const habitCompletionRef = doc(db, 'users', userId, 'completedHabits', habitId);
+  const existingCompletion = await getDoc(habitCompletionRef);
+  
+  if (existingCompletion.exists()) {
+    const completionData = existingCompletion.data();
+    const currentDates = completionData.dates || [];
+    
+    if (currentDates.includes(date)) {
+      const updatedDates = currentDates.filter(d => d !== date);
+      
+      if (updatedDates.length > 0) {
+        // Still has other completion dates, just remove this specific date
+        await updateDoc(habitCompletionRef, {
+          dates: updatedDates,
+          progress: increment(-1), // Decrease total count
+          completedAt: serverTimestamp()
+        });
+      } else {
+        // No more completion dates, mark as completely uncompleted
+        await updateDoc(habitCompletionRef, {
+          completed: false,
+          dates: [],
+          progress: 0,
+          completedAt: serverTimestamp(),
+          state: 'cancelled'
+        });
+      }
+      
+      // Update user's gold and can (subtract rewards)
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        altin: increment(-(habitData.goldReward || 0)),
+        can: increment(-(habitData.canReward || 0))
+      });
+    }
+  }
+};
+
+// Get habit completion history
+const getHabitHistory = async (userId, habitId) => {
+  const habitCompletionRef = doc(db, 'users', userId, 'completedHabits', habitId);
+  const habitCompletionDoc = await getDoc(habitCompletionRef);
+  
+  if (habitCompletionDoc.exists()) {
+    const data = habitCompletionDoc.data();
+    return {
+      totalCompletions: data.progress || 0,
+      completionDates: data.dates || [],
+      isCurrentlyCompleted: data.completed || false,
+      lastCompletedAt: data.completedAt?.toDate()
+    };
+  }
+  
+  return {
+    totalCompletions: 0,
+    completionDates: [],
+    isCurrentlyCompleted: false,
+    lastCompletedAt: null
+  };
+};
+```
+
+## 🔒 **Security Rules (UPDATED)**
 
 ```javascript
 rules_version = '2';
@@ -243,6 +278,21 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // Completed habits subcollection
+      match /completedHabits/{habitId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && request.auth.token.admin == true;
+      }
+      
+      // Future subcollections (modular approach)
+      match /completedQuests/{questId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      match /completedEvents/{eventId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
     
     // Habits collection (read-only for users)
@@ -250,76 +300,57 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.token.admin == true;
     }
-    
-    // Habit logs collection (NEW SCHEMA)
-    match /habitLogs/{logId} {
-      allow read, write: if request.auth != null && 
-        resource.data.userId == request.auth.uid;
-      allow read: if request.auth != null && 
-        request.auth.token.admin == true;
-      // Only allow creation if user owns the log
-      allow create: if request.auth != null && 
-        request.resource.data.userId == request.auth.uid;
-    }
   }
 }
 ```
 
-## 📈 **Firestore Indexes**
+## 📈 **Firestore Indexes (UPDATED)**
 
 ### Composite Indexes Required:
 
-1. **habitLogs Collection:**
-   - Fields: `userId` (Ascending), `date` (Descending), `completed` (Ascending)
-   - Purpose: User'ın belirli tarih completion'larını çekmek
+1. **users/[userId]/completedHabits Collection:**
+   - Fields: `date` (Ascending), `completed` (Ascending)
+   - Purpose: Get completions for specific date
    
-   - Fields: `userId` (Ascending), `habitID` (Ascending), `date` (Ascending), `completed` (Ascending)
-   - Purpose: Belirli habit'in completion durumunu kontrol etmek
+   - Fields: `date` (Ascending), `progress` (Descending)
+   - Purpose: Get progress tracking for habits
    
-   - Fields: `userId` (Ascending), `date` (Ascending), `state` (Ascending)
-   - Purpose: User'ın onay bekleyen habit'lerini çekmek
-
-2. **habits Collection:**
-   - Fields: `isActive` (Ascending), `makam` (Ascending)
-   - Purpose: Aktif habit'leri makam seviyesine göre filtrelemek
-   
-   - Fields: `frequency` (Ascending), `isActive` (Ascending)
-   - Purpose: Günlük/haftalık habit'leri filtrelemek
-
-### Single Field Indexes (otomatik):
-- `userId`, `date`, `makam`, `isActive`, `habitID`, `completed`, `state` fields automatically indexed
+   - Fields: `state` (Ascending), `completedAt` (Descending)
+   - Purpose: Get pending approvals chronologically
 
 ### Index Commands for Firebase CLI:
 ```bash
-# habitLogs collection indexes
-firebase firestore:indexes:add --collection-group=habitLogs --query-scope=COLLECTION --field=userId,ASCENDING --field=date,DESCENDING --field=completed,ASCENDING
+# completedHabits subcollection indexes
+firebase firestore:indexes:add --collection-group=completedHabits --query-scope=COLLECTION --field=date,ASCENDING --field=completed,ASCENDING
 
-firebase firestore:indexes:add --collection-group=habitLogs --query-scope=COLLECTION --field=userId,ASCENDING --field=habitID,ASCENDING --field=date,ASCENDING --field=completed,ASCENDING
+firebase firestore:indexes:add --collection-group=completedHabits --query-scope=COLLECTION --field=date,ASCENDING --field=progress,DESCENDING
 
-firebase firestore:indexes:add --collection-group=habitLogs --query-scope=COLLECTION --field=userId,ASCENDING --field=date,ASCENDING --field=state,ASCENDING
-
-# habits collection indexes  
-firebase firestore:indexes:add --collection-group=habits --query-scope=COLLECTION --field=isActive,ASCENDING --field=makam,ASCENDING
-
-firebase firestore:indexes:add --collection-group=habits --query-scope=COLLECTION --field=frequency,ASCENDING --field=isActive,ASCENDING
+firebase firestore:indexes:add --collection-group=completedHabits --query-scope=COLLECTION --field=state,ASCENDING --field=completedAt,DESCENDING
 ```
 
-## 🎯 **Best Practices**
+## 🎯 **Modular Design Benefits**
 
-### Performance:
-- Document ID'lerde predictable pattern kullan: `{userId}_{date}`
-- Batch operations kullan (multiple habits aynı anda)
-- Client-side caching with AsyncStorage
+### Future Extensibility:
+```javascript
+// Easy to add new completion systems
+users/[userId]/completedQuests/[questId]
+users/[userId]/completedEvents/[eventId]
+users/[userId]/completedChallenges/[challengeId]
+users/[userId]/completedAchievements/[achievementId]
+```
 
-### Data Consistency:
-- Always update metadata fields
-- Use transactions for critical operations
-- Validate data before writing
+### Performance Benefits:
+- ✅ User-specific queries (no cross-user data mixing)
+- ✅ Automatic data isolation
+- ✅ Reduced index complexity
+- ✅ Better caching opportunities
+- ✅ Easier backup/restore per user
 
-### Security:
-- Never trust client-side data
-- Use server-side validation
-- Implement proper user permissions
+### Security Benefits:
+- ✅ Natural access control boundaries
+- ✅ Simpler security rules
+- ✅ User data completely isolated
+- ✅ No accidental cross-user data access
 
 ## 📱 **Mobile App Integration (NEW SCHEMA)**
 

@@ -24,7 +24,7 @@ import { ActivityIndicator, Alert, RefreshControl, SafeAreaView, ScrollView, Tex
 import RewardBanner from '../../../components/RewardBanner';
 import UserHeader from '../../../components/UserHeader';
 import { Colors, Components, Layout, Typography } from '../../../css';
-import { completeHabit, fixUserMaxHealth, getActiveHabits, getHabitCompletions, getUser, getWeeklyHabitCompletions, uncompleteHabit } from '../../../services/firebase';
+import { completeHabitNew, fixUserMaxHealth, getActiveHabits, getHabitCompletionsNew, getUser, getWeeklyHabitCompletionsNew, uncompleteHabitNew } from '../../../services/firebase';
 import { Habit, HabitCompletion, User } from '../../../types';
 import Content from './content';
 
@@ -78,8 +78,8 @@ export default function HabitsScreen() {
       // Load habits and completions from Firebase (read-only)
       const [habitsData, completionsData, weeklyCompletionsData] = await Promise.all([
         getActiveHabits(), // Just read existing habits
-        getHabitCompletions(profileId, selectedDate),
-        getWeeklyHabitCompletions(profileId, selectedDate)
+        getHabitCompletionsNew(profileId, selectedDate), // NEW: Use subcollection approach
+        getWeeklyHabitCompletionsNew(profileId, selectedDate) // NEW: Use subcollection approach
       ]);
 
       // Set state
@@ -113,8 +113,8 @@ export default function HabitsScreen() {
       if (user && user.id) {
         try {
           const [completionsData, weeklyCompletionsData] = await Promise.all([
-            getHabitCompletions(user.id, selectedDate),
-            getWeeklyHabitCompletions(user.id, selectedDate)
+            getHabitCompletionsNew(user.id, selectedDate), // NEW: Use subcollection approach
+            getWeeklyHabitCompletionsNew(user.id, selectedDate) // NEW: Use subcollection approach
           ]);
           setCompletions(completionsData);
           setWeeklyCompletions(weeklyCompletionsData);
@@ -230,9 +230,9 @@ export default function HabitsScreen() {
     // 🔄 BACKGROUND SYNC - Sync with Firebase in background
     try {
       if (isCompleted) {
-        await uncompleteHabit(user.id, habit.id, selectedDate, habit.goldReward, habit.canReward || 0);
+        await uncompleteHabitNew(user.id, habit.id, selectedDate, habit.goldReward, habit.canReward || 0); // NEW: Use subcollection approach
       } else {
-        await completeHabit(user.id, habit.id, selectedDate, habit.goldReward, habit.canReward || 0);
+        await completeHabitNew(user.id, habit.id, selectedDate, habit.goldReward, habit.canReward || 0, habit); // NEW: Use subcollection approach
       }
     } catch (error) {
       console.error('Error syncing habit with Firebase:', error);

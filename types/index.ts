@@ -22,6 +22,7 @@ export interface Habit {
   isActive: boolean;
   createdAt: Date;
   makam?: number;
+  approval?: string; // "auto" or "manual" approval
 }
 
 export interface HabitCompletion {
@@ -32,6 +33,70 @@ export interface HabitCompletion {
   completed: boolean;
   completedAt?: Date;
   goldEarned: number;
+}
+
+// ====================================================================
+// 🎯 NEW MODULAR COMPLETION SYSTEM TYPES
+// ====================================================================
+
+/**
+ * Base completion interface for all completion types
+ */
+export interface BaseCompletion {
+  id: string; // This is the itemId (habitId, questId, eventId, etc.)
+  completed: boolean;
+  completedAt: Date;
+  dates: string[]; // Array of completion dates (YYYY-MM-DD format)
+  progress: number; // Total completion count (length of dates array)
+  state: 'pending' | 'approved' | 'cancelled';
+}
+
+/**
+ * Habit-specific completion (extends base)
+ */
+export interface HabitCompletionNew extends BaseCompletion {
+  habitId: string; // Same as id, but explicit for clarity
+  userId: string;
+  goldEarned?: number; // Calculated field
+}
+
+/**
+ * Quest completion (future feature)
+ */
+export interface QuestCompletion extends BaseCompletion {
+  questId: string;
+  userId: string;
+  experienceEarned?: number;
+}
+
+/**
+ * Event completion (future feature)
+ */
+export interface EventCompletion extends BaseCompletion {
+  eventId: string;
+  userId: string;
+  specialReward?: string;
+}
+
+/**
+ * Challenge completion (future feature)
+ */
+export interface ChallengeCompletion extends BaseCompletion {
+  challengeId: string;
+  userId: string;
+  achievementUnlocked?: string;
+}
+
+/**
+ * Generic completion service interface
+ */
+export interface CompletionServiceInterface {
+  getCompletionsForDate(userId: string, date: string): Promise<BaseCompletion[]>;
+  getCompletionsForDateRange(userId: string, startDate: string, endDate: string): Promise<BaseCompletion[]>;
+  isCompleted(userId: string, itemId: string, date: string): Promise<boolean>;
+  complete(userId: string, itemId: string, date: string, itemData: any, customData?: any): Promise<void>;
+  uncomplete(userId: string, itemId: string, date: string): Promise<void>;
+  getProgress(userId: string, itemId: string, date: string): Promise<number>;
 }
 
 export interface UserProgress {
