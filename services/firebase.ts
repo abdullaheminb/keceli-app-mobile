@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   increment,
+  limit,
   query,
   serverTimestamp,
   setDoc,
@@ -806,12 +807,16 @@ export interface Slider {
 }
 
 /**
- * Get sliders for a specific page
+ * Get sliders for a specific page (optimized with limit)
  */
 export const getSlidersForPage = async (page: string): Promise<Slider[]> => {
   try {
     const slidersRef = collection(db, 'sliders');
-    const slidersQuery = query(slidersRef, where('page', '==', page));
+    const slidersQuery = query(
+      slidersRef, 
+      where('page', '==', page),
+      limit(10) // Limit to prevent large data loads
+    );
     const snapshot = await getDocs(slidersQuery);
     
     if (snapshot.empty) {
@@ -860,12 +865,16 @@ export interface Quest {
 }
 
 /**
- * Get active quests
+ * Get active quests (optimized with limit and sorting)
  */
 export const getActiveQuests = async (): Promise<Quest[]> => {
   try {
     const questsRef = collection(db, 'quests');
-    const questsQuery = query(questsRef, where('isActive', '==', true));
+    const questsQuery = query(
+      questsRef, 
+      where('isActive', '==', true),
+      limit(20) // Limit to prevent large data loads
+    );
     const snapshot = await getDocs(questsQuery);
     
     if (snapshot.empty) {
@@ -893,7 +902,13 @@ export const getActiveQuests = async (): Promise<Quest[]> => {
       quests.push(quest);
     });
     
-    return quests;
+    // Sort by makam (easier quests first) and then by reward
+    return quests.sort((a, b) => {
+      if (a.makam !== b.makam) {
+        return a.makam - b.makam; // Lower makam first
+      }
+      return b.reward - a.reward; // Higher reward first within same makam
+    });
     
   } catch (error) {
     console.error('Error fetching quests:', error);

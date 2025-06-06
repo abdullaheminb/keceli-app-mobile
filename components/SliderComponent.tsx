@@ -14,7 +14,7 @@
  * @used_in Adventure sayfası
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Dimensions,
     Image,
@@ -38,27 +38,73 @@ interface SliderComponentProps {
 export function SliderComponent({
   sliders,
   autoPlay = true,
-  autoPlayInterval = 3000,
+  autoPlayInterval = 10000, // Default 10 saniye
   height = 200
 }: SliderComponentProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Programatik scroll fonksiyonu
+  const scrollToIndex = (index: number) => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({
+        x: index * screenWidth,
+        animated: true,
+      });
+    }
+    setCurrentIndex(index);
+  };
+
+  // Sonraki slide'a geç
+  const goToNext = () => {
+    const nextIndex = currentIndex === sliders.length - 1 ? 0 : currentIndex + 1;
+    scrollToIndex(nextIndex);
+  };
+
+  // Önceki slide'a geç
+  const goToPrevious = () => {
+    const prevIndex = currentIndex === 0 ? sliders.length - 1 : currentIndex - 1;
+    scrollToIndex(prevIndex);
+  };
+
+  // Auto-play timer'ı başlat/durdur
+  const startAutoPlay = () => {
+    if (autoPlay && sliders.length > 1) {
+      intervalRef.current = setInterval(() => {
+        goToNext();
+      }, autoPlayInterval);
+    }
+  };
+
+  const stopAutoPlay = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
 
   useEffect(() => {
-    if (autoPlay && sliders.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentIndex((prevIndex) => 
-          prevIndex === sliders.length - 1 ? 0 : prevIndex + 1
-        );
-      }, autoPlayInterval);
-
-      return () => clearInterval(interval);
-    }
-  }, [autoPlay, autoPlayInterval, sliders.length]);
+    startAutoPlay();
+    return () => stopAutoPlay();
+  }, [autoPlay, autoPlayInterval, sliders.length, currentIndex]);
 
   const handleScroll = (event: any) => {
     const x = event.nativeEvent.contentOffset.x;
     const index = Math.round(x / screenWidth);
-    setCurrentIndex(index);
+    if (index !== currentIndex) {
+      setCurrentIndex(index);
+    }
+  };
+
+  // Manuel scroll başladığında auto-play'i durdur
+  const handleScrollBeginDrag = () => {
+    stopAutoPlay();
+  };
+
+  // Manuel scroll bittiğinde auto-play'i yeniden başlat
+  const handleScrollEndDrag = () => {
+    startAutoPlay();
   };
 
   if (!sliders || sliders.length === 0) {
@@ -74,10 +120,13 @@ export function SliderComponent({
   return (
     <View style={[styles.container, { height }]}>
       <ScrollView
+        ref={scrollViewRef}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScroll}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onScrollEndDrag={handleScrollEndDrag}
         scrollEventThrottle={16}
       >
         {sliders.map((slider, index) => (
@@ -117,9 +166,23 @@ export function SliderComponent({
                 styles.dot,
                 index === currentIndex ? styles.activeDot : styles.inactiveDot
               ]}
-              onPress={() => setCurrentIndex(index)}
+              onPress={() => scrollToIndex(index)}
             />
           ))}
+        </View>
+      )}
+
+      {/* Progress Bar for Auto Play */}
+      {autoPlay && sliders.length > 1 && (
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View 
+              style={[
+                styles.progressFill,
+                { width: `${((currentIndex + 1) / sliders.length) * 100}%` }
+              ]} 
+            />
+          </View>
         </View>
       )}
     </View>
@@ -218,6 +281,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6c757d',
     textAlign: 'center',
+  },
+  progressContainer: {
+    position: 'absolute',
+    top: 8,
+    left: 16,
+    right: 16,
+  },
+  progressBar: {
+    height: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 1.5,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: 'white',
+    borderRadius: 1.5,
   },
 });
 

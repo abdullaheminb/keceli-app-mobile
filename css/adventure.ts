@@ -71,6 +71,59 @@ export const AdventureStyles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
+  
+  // Skeleton Loading Styles
+  sliderSkeleton: {
+    height: 200,
+    backgroundColor: '#f0f0f0',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  skeletonBox: {
+    flex: 1,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 8,
+  },
+  questSkeleton: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  skeletonImageBox: {
+    width: '100%',
+    height: 60,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  skeletonContent: {
+    flex: 1,
+  },
+  skeletonTitle: {
+    height: 20,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+    marginBottom: 8,
+    width: '70%',
+  },
+  skeletonText: {
+    height: 14,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+    marginBottom: 6,
+    width: '100%',
+  },
 });
 
 // QuestCard Styles
