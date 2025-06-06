@@ -87,7 +87,7 @@ export const Typography = StyleSheet.create({
   
   // Gün isimleri için küçük font
   dayName: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
     color: Colors.textSecondary,
   },

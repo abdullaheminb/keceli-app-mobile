@@ -12,7 +12,8 @@
   "can": "number",   // Lives amount
   "profilePic": "string", // Optional profile image URL
   "ihlas": "number",
-  "role": "string"
+  "role": "string",
+  "maxHealth": "number"
 }
 ```
 
@@ -61,7 +62,8 @@ const user = {
   profileImage: userData.profilePic, // schema: profilePic
   lives: userData.can, // schema: can
   gold: userData.altin, // schema: altin
-  makam: userData.makam // schema: makam (0-4)
+  makam: userData.makam, // schema: makam (0-4)
+  maxHealth: userData.maxHealth || 100 // schema: maxHealth
 };
 
 // All users (admin)
@@ -144,6 +146,7 @@ const createUser = async (userId, userData) => {
     makam: 0, // schema: makam (0-4)
     altin: 0, // schema: altin (gold)
     can: 100, // schema: can (lives)
+    maxHealth: 100, // schema: maxHealth (max lives limit)
     profilePic: null, // schema: profilePic
     ihlas: 0, // schema: ihlas
     role: 'user', // schema: role
@@ -339,7 +342,8 @@ const mapFirebaseUserToApp = (firebaseUser) => ({
   profileImage: firebaseUser.profilePic, // schema: profilePic  
   lives: firebaseUser.can, // schema: can
   gold: firebaseUser.altin, // schema: altin
-  makam: firebaseUser.makam // schema: makam
+  makam: firebaseUser.makam, // schema: makam
+  maxHealth: firebaseUser.maxHealth || 100 // schema: maxHealth
 });
 
 // Map Firebase habit data to app format

@@ -29,6 +29,7 @@ export const getUser = async (userId: string): Promise<User | null> => {
         lives: userData.can || userData.lives || 5, // schema: can
         gold: userData.altin || userData.gold || 0, // schema: altin
         makam: userData.makam || 0, // schema: makam (number 0-4)
+        maxHealth: userData.maxHealth || 100, // schema: maxHealth
       } as User;
       
       return user;
@@ -53,16 +54,93 @@ export const updateUserGold = async (userId: string, goldAmount: number): Promis
   }
 };
 
-// Update user can (lives)
-const updateUserCan = async (userId: string, canAmount: number): Promise<void> => {
+// Update user can (lives) with maxHealth check
+export const updateUserCan = async (userId: string, canAmount: number): Promise<void> => {
   try {
     const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      can: increment(canAmount) // schema: can
-    });
+    
+    // First get current user data to check maxHealth
+    const userDoc = await getDoc(userRef);
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const currentCan = userData.can || 0;
+      const maxHealth = userData.maxHealth || 100;
+      
+      // Calculate new can value
+      const newCan = currentCan + canAmount;
+      
+      // Prevent can from exceeding maxHealth
+      const cappedCan = Math.min(newCan, maxHealth);
+      
+      // Only update if the value would actually change
+      if (cappedCan !== currentCan) {
+        await updateDoc(userRef, {
+          can: cappedCan // Set absolute value instead of increment to prevent exceeding maxHealth
+        });
+      }
+    }
   } catch (error) {
     console.error('Error updating user can:', error);
     throw error;
+  }
+};
+
+// Utility function to fix existing users who exceed maxHealth
+export const fixUserMaxHealth = async (userId: string): Promise<void> => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const currentCan = userData.can || 0;
+      let maxHealth = userData.maxHealth;
+      
+      const updates: any = {};
+      
+      // If maxHealth doesn't exist, set it to 100
+      if (!maxHealth) {
+        maxHealth = 100;
+        updates.maxHealth = maxHealth;
+        console.log(`User ${userId} maxHealth set to ${maxHealth}`);
+      }
+      
+      // If current can exceeds maxHealth, cap it
+      if (currentCan > maxHealth) {
+        updates.can = maxHealth;
+        console.log(`User ${userId} can reduced from ${currentCan} to ${maxHealth}`);
+      }
+      
+      // Only update if there are changes
+      if (Object.keys(updates).length > 0) {
+        await updateDoc(userRef, updates);
+      }
+    }
+  } catch (error) {
+    console.error('Error fixing user maxHealth:', error);
+    throw error;
+  }
+};
+
+// Debug function to check user data
+export const debugUserData = async (userId: string): Promise<void> => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      console.log(`=== DEBUG USER DATA for ${userId} ===`);
+      console.log('Raw Firebase data:', userData);
+      console.log('can:', userData.can);
+      console.log('maxHealth:', userData.maxHealth);
+      console.log('username:', userData.username);
+      console.log('=====================================');
+    } else {
+      console.log(`User ${userId} does not exist in Firebase`);
+    }
+  } catch (error) {
+    console.error('Error debugging user data:', error);
   }
 };
 

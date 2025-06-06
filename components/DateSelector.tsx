@@ -16,7 +16,7 @@
  * @used_in app/screens/habits/content.tsx - tarih seçimi için
  */
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Components, Layout, Typography } from '../css';
 
@@ -26,29 +26,25 @@ interface DateSelectorProps {
 }
 
 export default function DateSelector({ selectedDate, onDateSelect }: DateSelectorProps) {
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [scrollViewWidth, setScrollViewWidth] = useState(0);
+
   const generateDates = () => {
     const dates = [];
     const today = new Date();
+    const day = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
     
-    // Bugünün hangi gün olduğunu bul (0 = Pazar, 1 = Pazartesi, ..., 6 = Cumartesi)
-    const todayDayOfWeek = today.getDay();
+    // Haftanın başlangıcını Cumartesi olarak ayarla
+    const start = new Date(today);
     
-    // Önceki cumartesiyi bul
-    // Eğer bugün cumartesi ise (6), önceki cumartesi 7 gün önce
-    // Eğer bugün pazar ise (0), önceki cumartesi 1 gün önce
-    // Eğer bugün pazartesi ise (1), önceki cumartesi 2 gün önce
-    // ...
-    let daysToLastSaturday;
-    if (todayDayOfWeek === 6) { // Bugün cumartesi
-      daysToLastSaturday = 7; // Önceki cumartesi
-    } else {
-      daysToLastSaturday = todayDayOfWeek + 1; // Cumartesi = 6, bu gün - cumartesi
-    }
+    // Cumartesi'ye kadar geriye git
+    const daysToSaturday = day === 6 ? 0 : (day + 1);
+    start.setDate(today.getDate() - daysToSaturday);
     
     // Önceki cumartesiden başlayarak 8 gün ekle
     for (let i = 0; i < 8; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - daysToLastSaturday + i);
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
       dates.push(date);
     }
     
@@ -85,6 +81,28 @@ export default function DateSelector({ selectedDate, onDateSelect }: DateSelecto
 
   const dates = generateDates();
 
+  // Seçilen tarihi ortala (ilk açılışta bugün, sonra seçilen tarih)
+  useEffect(() => {
+    if (scrollViewRef.current && scrollViewWidth > 0) {
+      // Seçilen tarihin index'ini bul
+      const selectedIndex = dates.findIndex(date => formatDate(date) === selectedDate);
+      
+      if (selectedIndex !== -1) {
+        // Her date item'ın genişliği yaklaşık 80px
+        const itemWidth = 80;
+        const centerOffset = scrollViewWidth / 2;
+        const scrollToX = Math.max(0, (selectedIndex * itemWidth) - centerOffset + (itemWidth / 2));
+        
+        setTimeout(() => {
+          scrollViewRef.current?.scrollTo({
+            x: scrollToX,
+            animated: true,
+          });
+        }, 100);
+      }
+    }
+  }, [selectedDate, scrollViewWidth]); // selectedDate değiştiğinde scroll et
+
   return (
     <View style={{
       backgroundColor: Colors.surface,
@@ -94,9 +112,14 @@ export default function DateSelector({ selectedDate, onDateSelect }: DateSelecto
     }}>
       <Text style={Typography.subtitleMedium}>Günlük Takip</Text>
       <ScrollView 
+        ref={scrollViewRef}
         horizontal 
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={Layout.paddingHorizontal}
+        onLayout={(event) => {
+          const { width } = event.nativeEvent.layout;
+          setScrollViewWidth(width);
+        }}
       >
         {dates.map((date, index) => {
           const dateString = formatDate(date);

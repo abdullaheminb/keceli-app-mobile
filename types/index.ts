@@ -5,6 +5,7 @@ export interface User {
   lives?: number;
   gold?: number;
   makam?: number;
+  maxHealth?: number;
 }
 
 export interface Habit {

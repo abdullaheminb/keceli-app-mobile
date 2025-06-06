@@ -149,43 +149,46 @@ export default function Content({
             ? getWeeklyHabitCompletionCount(habit.id, selectedDate, weeklyCompletions)
             : 0;
           
-          // Kotaya ulaşan weekly task'lar için özel durum
-          const isQuotaCompleted = habit.weekday === 'any' && 
-            completionCount >= (habit.repeat || 1) && 
-            showOnlyCompleted;
-          
-          // Kotaya ulaşmış ama o gün tamamlanmamış ise gri göster
-          const isQuotaCompletedButNotToday = isQuotaCompleted && !isCompleted;
-          
-          return (
-            <View key={habit.id}>
-              <HabitCard
-                habit={habit}
-                isCompleted={isQuotaCompleted ? true : isCompleted}
-                onToggle={() => onHabitToggle(habit)}
-                disabled={isQuotaCompleted ? true : isDisabled}
-                animateCompletion={!showOnlyCompleted}
-                hideCheckbox={isQuotaCompleted} // Kotaya ulaşanlarda checkbox gizle
-                showRepeatInsteadOfReward={showOnlyCompleted}
-                completionCount={showOnlyCompleted ? 
-                  (habit.weekday === 'any' ? completionCount : 1) : 0
-                }
-                forceGrayStyle={isQuotaCompletedButNotToday}
-              />
-              {/* Show weekly progress for "any" day habits */}
-              {habit.weekday === 'any' && !showOnlyCompleted && (
-                <Text style={[Typography.bodySmall, Components.weeklyProgressText]}>
-                  Bu hafta: {completionCount}/{habit.repeat || 1} tamamlandı
-                </Text>
-              )}
-              {/* Show quota completed message */}
-              {isQuotaCompleted && (
-                <Text style={[Typography.bodySmall, Components.weeklyProgressText, { color: '#4CAF50' }]}>
-                  Bu hafta tamamlandı ({completionCount}/{habit.repeat || 1})
-                </Text>
-              )}
-            </View>
-          );
+          // Completed section'da farklı logic
+          if (showOnlyCompleted) {
+            // Completed section'da: o gün tamamlanmış ise yeşil ve clickable, değilse gri
+            const shouldShowAsCompleted = isCompleted;
+            const shouldDisable = !isCompleted; // Sadece o gün tamamlanmamışsa disable
+            const shouldHideCheckbox = !isCompleted; // Sadece o gün tamamlanmamışsa checkbox gizle
+            
+            return (
+              <View key={habit.id}>
+                <HabitCard
+                  habit={habit}
+                  isCompleted={shouldShowAsCompleted}
+                  onToggle={() => onHabitToggle(habit)}
+                  disabled={shouldDisable}
+                  animateCompletion={false}
+                  hideCheckbox={shouldHideCheckbox}
+                  showRepeatInsteadOfReward={true}
+                  completionCount={habit.weekday === 'any' ? completionCount : 1}
+                  forceGrayStyle={!isCompleted} // O gün tamamlanmamışsa gri göster
+                />
+              </View>
+            );
+          } else {
+            // Ana section'da normal logic
+            return (
+              <View key={habit.id}>
+                <HabitCard
+                  habit={habit}
+                  isCompleted={isCompleted}
+                  onToggle={() => onHabitToggle(habit)}
+                  disabled={isDisabled}
+                  animateCompletion={true}
+                  hideCheckbox={false}
+                  showRepeatInsteadOfReward={false}
+                  completionCount={0}
+                  forceGrayStyle={false}
+                />
+              </View>
+            );
+          }
         })}
       </View>
     );

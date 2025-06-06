@@ -31,6 +31,7 @@ export default function UserHeader({ user }: UserHeaderProps) {
   const userMakamString = convertMakamToString(user?.makam);
   const userGold = user?.gold || 0;
   const userLives = user?.lives || 0;
+  const userMaxHealth = user?.maxHealth || 100;
   const userProfileImage = user?.profileImage;
 
   return (
@@ -62,7 +63,7 @@ export default function UserHeader({ user }: UserHeaderProps) {
         <View style={{ flex: 1, marginRight: 20 }}>
           <Text style={Typography.captionBold}>Canlar</Text>
           <View style={Layout.row}>
-            <Text style={[Typography.bodyLarge, { marginLeft: 8 }]}>{userLives}/100</Text>
+            <Text style={[Typography.bodyLarge, { marginLeft: 8 }]}>{userLives}/{userMaxHealth}</Text>
           </View>
         </View>
         

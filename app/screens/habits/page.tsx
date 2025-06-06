@@ -24,7 +24,7 @@ import { ActivityIndicator, Alert, RefreshControl, SafeAreaView, ScrollView, Tex
 import RewardBanner from '../../../components/RewardBanner';
 import UserHeader from '../../../components/UserHeader';
 import { Colors, Components, Layout, Typography } from '../../../css';
-import { completeHabit, getActiveHabits, getHabitCompletions, getUser, getWeeklyHabitCompletions, uncompleteHabit } from '../../../services/firebase';
+import { completeHabit, fixUserMaxHealth, getActiveHabits, getHabitCompletions, getUser, getWeeklyHabitCompletions, uncompleteHabit } from '../../../services/firebase';
 import { Habit, HabitCompletion, User } from '../../../types';
 import Content from './content';
 
@@ -61,7 +61,18 @@ export default function HabitsScreen() {
           lives: 5,
           gold: 0,
           makam: 0,
+          maxHealth: 100,
         };
+      } else {
+        // Only fix user if they actually exceed maxHealth (optimization)
+        const currentCan = userData.lives || 0;
+        const maxHealth = userData.maxHealth || 100;
+        
+        if (currentCan > maxHealth || !userData.maxHealth) {
+          await fixUserMaxHealth(profileId);
+          // Reload user data after fixing
+          userData = await getUser(profileId);
+        }
       }
 
       // Load habits and completions from Firebase (read-only)
@@ -193,11 +204,19 @@ export default function HabitsScreen() {
         setCompletions(prev => [...prev, newCompletion]);
       }
       
-      setUser(prev => prev ? { 
-        ...prev, 
-        gold: (prev.gold || 0) + habit.goldReward,
-        lives: (prev.lives || 0) + (habit.canReward || 0)
-      } : null);
+      // Update user stats with maxHealth limit check
+      setUser(prev => {
+        if (!prev) return null;
+        
+        const newLives = (prev.lives || 0) + (habit.canReward || 0);
+        const maxHealth = prev.maxHealth || 100;
+        
+        return { 
+          ...prev, 
+          gold: (prev.gold || 0) + habit.goldReward,
+          lives: Math.min(newLives, maxHealth) // Prevent exceeding maxHealth
+        };
+      });
 
       // Show reward banner
       setLastReward({
@@ -237,11 +256,19 @@ export default function HabitsScreen() {
           setCompletions(prev => [...prev, rollbackCompletion]);
         }
         
-        setUser(prev => prev ? { 
-          ...prev, 
-          gold: (prev.gold || 0) + habit.goldReward,
-          lives: (prev.lives || 0) + (habit.canReward || 0)
-        } : null);
+        // Update user stats with maxHealth limit check for rollback
+        setUser(prev => {
+          if (!prev) return null;
+          
+          const newLives = (prev.lives || 0) + (habit.canReward || 0);
+          const maxHealth = prev.maxHealth || 100;
+          
+          return { 
+            ...prev, 
+            gold: (prev.gold || 0) + habit.goldReward,
+            lives: Math.min(newLives, maxHealth) // Prevent exceeding maxHealth
+          };
+        });
       } else {
         // Rollback: remove the completion
         if (habit.type === 'weekly') {
