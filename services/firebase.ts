@@ -791,4 +791,112 @@ export const uncompleteHabit = async (userId: string, habitId: string, date: str
     console.error('Error uncompleting habit:', error);
     throw error;
   }
+};
+
+// ====================================================================
+// 🎯 SLIDERS OPERATIONS
+// ====================================================================
+
+export interface Slider {
+  id: string;
+  title: string;
+  description: string;
+  feat_img: string;
+  page: string;
+}
+
+/**
+ * Get sliders for a specific page
+ */
+export const getSlidersForPage = async (page: string): Promise<Slider[]> => {
+  try {
+    const slidersRef = collection(db, 'sliders');
+    const slidersQuery = query(slidersRef, where('page', '==', page));
+    const snapshot = await getDocs(slidersQuery);
+    
+    if (snapshot.empty) {
+      return [];
+    }
+    
+    const sliders: Slider[] = [];
+    
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      
+      const slider: Slider = {
+        id: doc.id,
+        title: data.title || '',
+        description: data.description || '',
+        feat_img: data.feat_img || '',
+        page: data.page || ''
+      };
+      
+      sliders.push(slider);
+    });
+    
+    return sliders;
+    
+  } catch (error) {
+    console.error('Error fetching sliders:', error);
+    throw error;
+  }
+};
+
+// ====================================================================
+// 🎯 QUESTS OPERATIONS
+// ====================================================================
+
+export interface Quest {
+  id: string;
+  title: string;
+  description: string;
+  brief_desc: string;
+  feat_img: string;
+  reward: number;
+  weekday: string;
+  isActive: boolean;
+  createdAt: Date;
+  makam: number;
+}
+
+/**
+ * Get active quests
+ */
+export const getActiveQuests = async (): Promise<Quest[]> => {
+  try {
+    const questsRef = collection(db, 'quests');
+    const questsQuery = query(questsRef, where('isActive', '==', true));
+    const snapshot = await getDocs(questsQuery);
+    
+    if (snapshot.empty) {
+      return [];
+    }
+    
+    const quests: Quest[] = [];
+    
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      
+      const quest: Quest = {
+        id: doc.id,
+        title: data.title || 'Unnamed Quest',
+        description: data.description || '',
+        brief_desc: data.brief_desc || '',
+        feat_img: data.feat_img || '',
+        reward: data.reward || 0,
+        weekday: data.weekday || 'any',
+        isActive: data.isActive !== false,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        makam: data.makam || 0
+      };
+      
+      quests.push(quest);
+    });
+    
+    return quests;
+    
+  } catch (error) {
+    console.error('Error fetching quests:', error);
+    throw error;
+  }
 }; 

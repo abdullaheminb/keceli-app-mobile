@@ -7,7 +7,7 @@
 // Document ID: {userId}
 {
   "username": "string",
-  "makam": "number", // 0-4 (Çırak, İşçi, Usta, Master, Efsane)
+  "makam": "number", // 0-4 (Çalışkan Karınca, Azimli Çekirge, Pürdikkat Kertenkele, Arif Karga, İşlek Efendi)
   "altin": "number", // Gold amount
   "can": "number",   // Lives amount
   "maxHealth": "number", // Max lives limit

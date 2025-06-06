@@ -11,7 +11,7 @@
  * - Standart Text props desteği
  * 
  * @purpose Themed text display with automatic color switching
- * @used_in Collapsible, HelloWave, +not-found sayfalarında
+ * @used_in Collapsible, HelloWave, +not-found sayfalaru ında
  */
 
 import { StyleSheet, Text, type TextProps } from 'react-native';

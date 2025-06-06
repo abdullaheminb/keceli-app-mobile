@@ -312,12 +312,13 @@ export default function HabitsScreen() {
 
   return (
     <SafeAreaView style={Layout.containerWithTopPadding}>
-      <ScrollView 
-        style={Layout.container}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-      >
+      <View style={Layout.container}>
+        <ScrollView 
+          style={Layout.container}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
         {/* User Header */}
         <UserHeader user={user || { id: '', name: 'Loading...', lives: 0, gold: 0, makam: '' }} />
         
@@ -344,6 +345,7 @@ export default function HabitsScreen() {
           onHide={() => setShowRewardBanner(false)}
         />
       )}
+      </View>
     </SafeAreaView>
   );
 } 

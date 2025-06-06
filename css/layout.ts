@@ -30,8 +30,7 @@ export const Layout = StyleSheet.create({
   
   containerWithTopPadding: {
     flex: 1,
-    backgroundColor: Colors.background,
-    paddingTop: 10,
+    backgroundColor: '#000000', // Siyah SafeAreaView için
   },
   
   // Surface styles
